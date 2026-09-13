@@ -99,8 +99,10 @@
   border-radius: 9px;
   font-weight: 680 !important;
 }
-.nav-cta:hover {
-  opacity: 0.92;
+.nav-links .nav-cta:hover {
+  background: linear-gradient(135deg, var(--grad-1), var(--grad-2));
+  color: #fff !important;
+  opacity: 1;
 }
 /* A real mobile menu prevents the six primary actions from widening and
    clipping every page on a phone. */
