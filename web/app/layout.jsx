@@ -8,6 +8,7 @@ import "./marketing.css";
 import "./dash.css";
 import "./auth.css";
 import "./admin.css";
+import "./pricing.css";
 
 // Inter for everything functional - it was built for screens and its tabular
 // figures keep columns of rupee amounts from jittering. Instrument Serif only
@@ -37,7 +38,7 @@ export const metadata = {
     title: "Market Tide — the NSE & BSE filings that actually matter",
     description:
       "We read every filing on NSE and BSE, and summarise the ones that matter. "
-      + "Free to read.",
+      + "Free daily newsletter, with Premium research tools launching soon.",
     type: "website",
   },
 };

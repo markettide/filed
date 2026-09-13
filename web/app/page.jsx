@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Nav from "./Nav";
 import MkFooter from "./MkFooter";
-import { SITE, PER_MONTH } from "./site";
+import { PLANS } from "./site";
 
 export default function Landing() {
   // Real numbers and real filings, pulled from the same store the dashboard
@@ -38,7 +38,7 @@ export default function Landing() {
         {/* ---------------- hero ---------------- */}
         <section className="mk-hero">
           <h1 className="mk-h1">
-            Every filing read.
+            Every filing read.{" "}
             <br />
             <span className="grad">Only the ones that matter, kept.</span>
           </h1>
@@ -59,7 +59,7 @@ export default function Landing() {
             </a>
           </div>
           <p className="mk-ctanote">
-            No sign-up needed to read. {SITE.readers} investors already follow us.
+            Premium tools are open during launch preview. The daily email newsletter stays free.
           </p>
 
           {scanned ? (
@@ -242,8 +242,8 @@ export default function Landing() {
 
             <div className="bx">
               <div className="bx-num">₹0</div>
-              <h3>Free to read</h3>
-              <p>The dashboard and the daily WhatsApp brief cost nothing.</p>
+              <h3>Free newsletter</h3>
+              <p>The curated morning email remains free, with no card required.</p>
             </div>
             <div className="bx">
               <div className="bx-num">7</div>
@@ -260,27 +260,68 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* ---------------- pricing ---------------- */}
+        <section className="mk-sec home-pricing">
+          <div className="mk-sec-head">
+            <p className="mk-kicker">Plans for every reader</p>
+            <h2 className="mk-h2">Start free. Go deeper when you need it.</h2>
+            <p className="mk-lead">
+              The newsletter is free forever. Premium brings the full research
+              dashboard, filing history, filters, original PDFs and exports together.
+            </p>
+          </div>
+
+          <div className="plan-grid plan-grid--home">
+            <article className="plan-card">
+              <div className="plan-card-head">
+                <div><span className="plan-eyebrow">Newsletter only</span><h2>{PLANS.free.name}</h2></div>
+                <div className="plan-price"><b>₹0</b><span>/ forever</span></div>
+              </div>
+              <p>A focused morning email with the filings worth knowing.</p>
+              <ul className="plan-list">
+                <li>Daily email newsletter</li>
+                <li>Plain-English market highlights</li>
+                <li>Unsubscribe any time</li>
+              </ul>
+              <a className="btn-lg btn-ghost plan-action" href="/brief#subscribe">Get the free newsletter</a>
+            </article>
+
+            <article className="plan-card plan-card--featured">
+              <div className="plan-ribbon">Launching soon</div>
+              <div className="plan-card-head">
+                <div><span className="plan-eyebrow">Complete access</span><h2>{PLANS.premium.name}</h2></div>
+                <div className="plan-price"><b>₹{PLANS.premium.price}</b><span>/ {PLANS.premium.months} months</span></div>
+              </div>
+              <p>Everything needed to research important NSE and BSE filings efficiently.</p>
+              <ul className="plan-list">
+                <li>Full announcement dashboard</li>
+                <li>Insider trading tracker</li>
+                <li>Bulk and block deal tracker</li>
+                <li>Summaries, key numbers and original PDFs</li>
+                <li>Seven-day history, filters and Excel export</li>
+                <li>Private investor community</li>
+                <li>Free newsletter included</li>
+              </ul>
+              <a className="btn-lg btn-grad plan-action" href="/pricing">See everything included</a>
+            </article>
+          </div>
+        </section>
+
         {/* ---------------- community teaser ---------------- */}
         <section className="mk-sec">
           <div className="finale">
-            <h2>Free while we&apos;re in beta.</h2>
+            <h2>Premium is nearly here.</h2>
             <p>
-              The dashboard, the daily brief and the community are all free
-              right now. They will be ₹{SITE.price.toLocaleString("en-IN")} a
-              year — about ₹{PER_MONTH} a month — once we open properly.
-              Everyone who joins during the beta keeps reading either way.
+              Keep receiving the newsletter for free, or choose Premium at
+              ₹{PLANS.premium.price} for {PLANS.premium.months} months when subscriptions open.
+              Current dashboard access remains available during the launch preview.
             </p>
             <div className="mk-ctas">
-              <a className="btn-lg btn-grad" href="/join">
-                Join the community · free
+              <a className="btn-lg btn-grad" href="/pricing">
+                Compare plans
               </a>
-              <a
-                className="btn-lg btn-wa"
-                href={SITE.newsletterLink}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <WaIcon /> Free daily brief
+              <a className="btn-lg btn-ghost" href="/brief#subscribe">
+                Get the free newsletter
               </a>
             </div>
           </div>
@@ -307,15 +348,6 @@ function IconFilter() {
   return (
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-    </svg>
-  );
-}
-
-function WaIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M17.47 14.38c-.3-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.64.08-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.65-2.05-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.6-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.01-1.04 2.47s1.06 2.86 1.21 3.06c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.75-.72 2-1.41.25-.69.25-1.28.17-1.41-.07-.13-.27-.2-.57-.35z" />
-      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.46 1.32 4.96L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2zm0 18.15h-.01a8.22 8.22 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.25-8.23 2.2 0 4.27.86 5.83 2.42a8.18 8.18 0 0 1 2.41 5.82c0 4.54-3.7 8.23-8.24 8.23z" />
     </svg>
   );
 }

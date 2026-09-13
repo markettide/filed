@@ -112,7 +112,10 @@ export default function Brief() {
           {/* ---- today's issue ---- */}
           {loading ? (
             <div className="brief-latest brief-latest--wait">
-              <span className="brief-kicker">Today&apos;s issue</span>
+              <div>
+                <span className="brief-kicker">Today&apos;s issue</span>
+                <span className="brief-loading-line">Checking the latest issue&hellip;</span>
+              </div>
             </div>
           ) : latest ? (
             <div className="brief-latest">

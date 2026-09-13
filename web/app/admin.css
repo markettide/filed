@@ -146,4 +146,5 @@
   .admin-cards b { font-size: 24px; }
   .admin-panel { padding: 16px; }
   .admin-pagination { flex-wrap: wrap; gap: 8px; }
+  .admin-top-actions button, .admin-pagination button, .admin-more { min-height: 44px; }
 }

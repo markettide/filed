@@ -34,6 +34,7 @@
   display: flex;
   align-items: center;
   gap: 18px;
+  position: relative;
 }
 .nav-brand {
   display: flex;
@@ -64,6 +65,33 @@
   color: var(--ink);
   background: var(--glass);
 }
+.nav-links .nav-active:not(.nav-cta) {
+  color: var(--ink);
+  background: var(--glass);
+}
+.nav-menu {
+  display: none;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+}
+.nav-menu span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  margin: 3px auto;
+  border-radius: 2px;
+  background: currentColor;
+  transition: transform .16s ease, opacity .16s ease;
+}
+.nav-menu[aria-expanded="true"] span:nth-child(1) { transform: translateY(5px) rotate(45deg); }
+.nav-menu[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.nav-menu[aria-expanded="true"] span:nth-child(3) { transform: translateY(-5px) rotate(-45deg); }
 .nav-cta {
   background: linear-gradient(135deg, var(--grad-1), var(--grad-2));
   color: #fff !important;
@@ -74,19 +102,39 @@
 .nav-cta:hover {
   opacity: 0.92;
 }
-/* The brief and the dashboard used to be hidden on a phone - only the Join
-   button survived, so the newsletter was invisible to anyone on mobile, which
-   is most readers. Everything stays now; the type and padding shrink instead. */
-@media (max-width: 560px) {
-  .nav-in { padding: 11px 14px; gap: 10px; }
-  .nav-brand { font-size: 15.5px; }
-  .nav-links { gap: 2px; }
-  .nav-links a, .nav-account { font-size: 13px; padding: 7px 8px; }
-  .nav-cta { padding: 8px 12px !important; }
-}
-@media (max-width: 380px) {
-  .nav-brand span:not(.dot) { display: none; }   /* the dot alone is enough */
-  .nav-links a, .nav-account { font-size: 12.5px; padding: 6px 6px; }
+/* A real mobile menu prevents the six primary actions from widening and
+   clipping every page on a phone. */
+@media (max-width: 860px) {
+  .nav-in { min-height: 62px; padding: 9px 16px; }
+  .nav-brand { font-size: 16px; }
+  .nav-menu { display: block; flex: 0 0 42px; }
+  .nav-links {
+    position: absolute;
+    top: calc(100% + 1px);
+    left: 12px;
+    right: 12px;
+    display: none;
+    align-items: stretch;
+    gap: 3px;
+    max-height: calc(100vh - 82px);
+    overflow-y: auto;
+    padding: 10px;
+    background: color-mix(in srgb, var(--panel) 97%, transparent);
+    border: 1px solid var(--line);
+    border-radius: 0 0 14px 14px;
+    box-shadow: var(--shadow-lg);
+  }
+  .nav-links.open { display: flex; flex-direction: column; }
+  .nav-links a, .nav-account {
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    font-size: 15px;
+    text-align: left;
+  }
+  .nav-cta { justify-content: center; margin-top: 4px; padding: 11px 14px !important; }
 }
 
 /* ---------- page shell ---------- */
@@ -716,6 +764,7 @@
 .brief-latest b {
   display: block; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;
 }
+.brief-loading-line { display: block; color: var(--muted); font-size: 14px; }
 .brief-day { font-size: 13.5px; color: var(--muted); }
 .brief-cta {
   padding: 13px 22px; border-radius: 11px; white-space: nowrap;

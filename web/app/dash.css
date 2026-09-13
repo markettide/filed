@@ -262,6 +262,7 @@
   .feedbar { top: 0; padding: 9px 0 10px; }
   .feedbar-row { gap: 7px; }
   .feedbar input[type="search"] { font-size: 16px; }  /* 16px stops iOS zooming */
+  .filter-toggle, .dl-btn { min-height: 44px; }
   .dl-btn { padding: 10px 13px; }
   .dl-btn span { display: none; }
 
@@ -446,6 +447,9 @@ body.sheet-open { overflow: hidden; }
   background: var(--bg, #fff);
   color: var(--ink, #111827);
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+@media (max-width: 900px) {
+  .board-tabs a { min-height: 44px; display: flex; align-items: center; }
 }
 .dash-blurb {
   margin: 6px 0 0;

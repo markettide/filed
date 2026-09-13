@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Nav from "../Nav";
 import MkFooter from "../MkFooter";
-import { SITE } from "../site";
+import { PLANS, SITE } from "../site";
 import { useSiteAuth } from "../SiteAuth";
 
 const BENEFITS = [
@@ -118,19 +118,18 @@ export default function Join() {
         {/* ---------------- hero ---------------- */}
         <section className="mk-hero">
           <div className="launch-banner">
-            Free while in beta · ₹{SITE.price.toLocaleString("en-IN")}/year later
+            Included with Premium · launching soon
           </div>
 
           <h1 className="mk-h1">
-            The Equity
+            The Equity{" "}
             <br />
             <span className="grad">Markets Club</span>
           </h1>
 
           <div className="price-tag" style={{ justifyContent: "center" }}>
-            <span className="was">₹{SITE.price.toLocaleString("en-IN")}/yr</span>
-            <b>Free</b>
-            <span>while in beta</span>
+            <b>₹{PLANS.premium.price}</b>
+            <span>/ {PLANS.premium.months} months with Premium</span>
           </div>
 
           <p className="mk-sub" style={{ marginTop: 22 }}>
@@ -154,10 +153,10 @@ export default function Join() {
 
           <div className="mk-ctas">
             <a className="btn-lg btn-grad" href="#join">
-              Join the club · free
+              Join the Premium launch list
             </a>
             <a className="btn-lg btn-ghost" href="/dashboard" data-auth-required>
-              See the free dashboard
+              Explore the dashboard preview
             </a>
           </div>
         </section>
@@ -201,32 +200,30 @@ export default function Join() {
           <div className="price-wrap">
             <div className="price-card">
               <p className="mk-kicker" style={{ marginBottom: 4 }}>
-                Founding membership
+                Premium launch list
               </p>
               <div className="price-tag">
-                <span className="was">₹{SITE.price.toLocaleString("en-IN")}/yr</span>
-                <b>Free</b>
-                <span>/ year</span>
+                <b>₹{PLANS.premium.price}</b>
+                <span>/ {PLANS.premium.months} months</span>
               </div>
               <p className="price-note">
-                One year. One community. Hundreds of conversations and
-                connections. Free for now — it becomes ₹{SITE.price.toLocaleString("en-IN")} a
-                year when the beta ends.
+                The private community is included with Premium alongside the
+                full dashboard, filing history, original PDFs and Excel exports.
               </p>
 
               <div className="seatbar">
                 <div className="seatbar-track">
                   <div className="seatbar-fill" style={{ width: "18%" }} />
                 </div>
-                <span>No card, no payment, nothing to cancel.</span>
+                <span>No card or payment is needed to join the launch list.</span>
               </div>
 
               {state === "done" ? (
                 <div className="done">
-                  <b>Your founding seat is reserved.</b>
+                  <b>You&apos;re on the Premium launch list.</b>
                   <p>
-                    We&apos;ll message you when the doors open, with joining
-                    instructions and your locked price.
+                    We&apos;ll message you before Premium opens with the final
+                    joining and payment details.
                   </p>
                   <a
                     className="wa-btn"
@@ -277,15 +274,14 @@ export default function Join() {
                         />
                       </div>
                       <button type="submit" disabled={state === "sending"}>
-                        {state === "sending" ? "Reserving…" : "Reserve my seat"}
+                        {state === "sending" ? "Joining…" : "Join the launch list"}
                       </button>
                     </div>
                     {error && <p className="err">{error}</p>}
                   </form>
                   <p className="note" style={{ marginTop: 10 }}>
-                    Nothing to pay today. We&apos;ll message you when the doors
-                    open — your free beta place is held
-                    until then.
+                    Nothing to pay today. We&apos;ll show the price and terms again
+                    before asking you to subscribe.
                   </p>
                 </>
               )}
@@ -309,11 +305,10 @@ export default function Join() {
               <div className="why-card">
                 <h3>Before you join</h3>
                 <p>
-                  You can leave whenever you like — there is no lock-in and no
-                  notice period. The annual fee is{" "}
-                  <strong>non-refundable</strong> once you have joined, except if
-                  you are charged twice or we stop running the service during your
-                  year. Full detail in the <a href="/refund">refund policy</a>.
+                  Payment is not connected yet. Joining this list does not start
+                  a subscription or create a charge. We will publish the final
+                  billing and cancellation terms before Premium opens. See the{" "}
+                  <a href="/refund">refund policy</a> for the current policy.
                 </p>
                 <p>
                   We are not a SEBI-registered research analyst or investment
@@ -328,9 +323,10 @@ export default function Join() {
         {/* ---------------- closing ---------------- */}
         <section className="mk-sec">
           <div className="finale">
-            <h2>Free while in beta</h2>
+            <h2>Premium is launching soon</h2>
             <p className="closing">
-              One year. One community. Hundreds of conversations and connections.
+              The full research workspace and private investor community, together
+              for ₹{PLANS.premium.price} every {PLANS.premium.months} months.
             </p>
             <div className="nots"
                  style={{ maxWidth: 260, margin: "24px auto", textAlign: "left" }}>
@@ -343,7 +339,7 @@ export default function Join() {
             </p>
             <div className="mk-ctas">
               <a className="btn-lg btn-grad" href="#join">
-                Reserve my seat
+                Join the launch list
               </a>
               <a
                 className="btn-lg btn-wa"

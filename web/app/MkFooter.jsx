@@ -10,6 +10,7 @@ export default function MkFooter() {
           <div className="footer-links">
             <a href="/dashboard">Dashboard</a>
             <a href="/brief">Daily brief</a>
+            <a href="/pricing">Pricing</a>
             <a href="/join">Join</a>
             <a href="/terms">Terms</a>
             <a href="/refund">Refunds</a>

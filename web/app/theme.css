@@ -20,7 +20,7 @@
   /* text */
   --ink: #f2f2f3;
   --muted: #a1a3aa;
-  --dim: #6f727a;
+  --dim: #858891;
 
   /* accent, kept quiet */
   --accent: #6f9dff;
@@ -54,7 +54,7 @@
     --line-soft: #efeeec;
     --ink: #16171a;
     --muted: #5c5f66;
-    --dim: #8a8d94;
+    --dim: #6f737b;
     --accent: #2f6bdc;
     --accent-ink: #ffffff;
     --pos: #0f8a53;
@@ -126,7 +126,7 @@ h1, h2, h3, .co, .dash-title, .mk-h1, .mk-h2, .nl-title {
 }
 
 /* focus that is visible without being loud */
-:where(a, button, input, summary):focus-visible {
+:where(a, button, input, select, summary):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 6px;

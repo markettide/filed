@@ -7,7 +7,7 @@ import {
   price,
 } from "../fmt";
 
-const PAGE = 40;
+const PAGE = 10;
 
 // Rows shown on a company card before the rest fold away.
 const PER_CARD = 5;
@@ -309,8 +309,8 @@ export default function InsiderPage() {
           </section>
         ) : null}
 
-        <section className="controls">
-          <div className="seg">
+        <section className="controls" aria-label="Filter insider trades">
+          <div className="seg type-seg" role="group" aria-label="Transaction type">
             {[
               ["all", "Buying & selling"],
               ["buy", "Buying"],
@@ -321,6 +321,7 @@ export default function InsiderPage() {
                 key={k}
                 type="button"
                 className={side === k ? "on" : ""}
+                aria-pressed={side === k}
                 onClick={() => setSide(k)}
               >
                 {l}
@@ -330,12 +331,13 @@ export default function InsiderPage() {
               </button>
             ))}
           </div>
-          <div className="seg wrapseg">
+          <div className="seg wrapseg" role="group" aria-label="Insider role">
             {ROLES.map(([k, l]) => (
               <button
                 key={k}
                 type="button"
                 className={who === k ? "on" : ""}
+                aria-pressed={who === k}
                 onClick={() => setWho(k)}
               >
                 {l}
@@ -344,13 +346,15 @@ export default function InsiderPage() {
           </div>
           <input
             className="search"
+            type="search"
+            aria-label="Search insider trades"
             placeholder="Search a company or a person"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
           {/* Whatever is on screen, as a spreadsheet - same filters, same
               days. A plain link, so the browser downloads it. */}
-          <a className="dl" href={`/api/insider?${query}&format=xlsx`}>
+          <a className="dl" aria-label="Download filtered insider trades as Excel" href={`/api/insider?${query}&format=xlsx`}>
             <span aria-hidden="true">&darr;</span> Excel
           </a>
         </section>
@@ -379,11 +383,12 @@ export default function InsiderPage() {
             seven-day window on its own could not answer. Days come from the
             API's own index, so a day with nothing in it is never offered. */}
         {data?.days?.length ? (
-          <section className="dates">
+          <section className="dates" aria-label="Filter insider trades by day">
             <span className="lbl">Day</span>
             <button
               type="button"
               className={`chip ${day === "all" ? "on" : ""}`}
+              aria-pressed={day === "all"}
               onClick={() => setDay("all")}
             >
               All
@@ -393,6 +398,7 @@ export default function InsiderPage() {
                 key={d}
                 type="button"
                 className={`chip ${day === d ? "on" : ""}`}
+                aria-pressed={day === d}
                 onClick={() => setDay(d)}
               >
                 {dayLabel(d)}
@@ -818,6 +824,28 @@ export default function InsiderPage() {
         @media (max-width: 560px) {
           .insider-page .head h1 { font-size: 24px; }
           .insider-page .lede { font-size: 15px; }
+          .insider-page .controls { gap: 10px; }
+          .insider-page .seg {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .insider-page .seg.wrapseg { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+          .insider-page .seg button {
+            min-height: 44px;
+            padding: 8px 6px;
+            white-space: normal;
+            line-height: 1.25;
+          }
+          .insider-page .seg button:nth-child(2n) { border-right: 0; }
+          .insider-page .seg.wrapseg button:nth-child(2n) { border-right: 1px solid var(--line); }
+          .insider-page .seg.wrapseg button:nth-child(3n) { border-right: 0; }
+          .insider-page .search { min-width: 0; height: 44px; font-size: 16px; }
+          .insider-page .dl { min-height: 44px; justify-content: center; }
+          .insider-page .dates { gap: 6px; }
+          .insider-page .chip, .insider-page .win { min-height: 40px; }
+          .insider-page .win { margin-left: 0; }
+          .insider-page .person, .insider-page .co { overflow-wrap: anywhere; }
           .insider-page .card { padding: 12px 14px 13px; }
           .insider-page .roll { margin-left: 0; width: 100%; }
           .insider-page .t-top { flex-direction: column; gap: 5px; }

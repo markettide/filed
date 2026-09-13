@@ -1,0 +1,53 @@
+/* Public pricing page. Profile styling stays separate until that feature ships. */
+.plans-page { min-height: 72vh; }
+.plans-hero { padding: 68px 0 28px; text-align: center; }
+.plans-hero .mk-h1 { margin-bottom: 18px; }
+.plans-hero .mk-sub { margin-bottom: 18px; }
+.launch-pill {
+  display: inline-flex; align-items: center; padding: 7px 11px; border-radius: 999px;
+  color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  font-size: 12px; font-weight: 750; letter-spacing: .035em; text-transform: uppercase;
+}
+.plan-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; max-width: 920px; margin: 24px auto 0; align-items: stretch; }
+.plan-card {
+  position: relative; display: flex; flex-direction: column; padding: 32px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-md);
+}
+.plan-card--featured { border-color: color-mix(in srgb, var(--accent) 48%, var(--line)); }
+.plan-ribbon { position: absolute; top: 0; right: 24px; transform: translateY(-50%); padding: 7px 11px; border-radius: 999px; background: linear-gradient(135deg, var(--grad-1), var(--grad-2)); color: white; font-size: 11px; font-weight: 750; }
+.plan-card-head { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
+.plan-eyebrow { display: block; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 11px; font-weight: 750; margin-bottom: 6px; }
+.plan-card h2 { margin: 0; font-size: 25px; }
+.plan-card > p { color: var(--muted); line-height: 1.55; margin: 18px 0; }
+.plan-price { text-align: right; flex: 0 0 auto; }
+.plan-price b { display: block; font-size: 31px; letter-spacing: -.04em; }
+.plan-price span { color: var(--muted); font-size: 12px; }
+.plan-list { list-style: none; padding: 0; margin: 2px 0 26px; display: grid; gap: 11px; }
+.plan-list li { position: relative; padding-left: 25px; line-height: 1.45; font-size: 14.5px; }
+.plan-list li::before { content: "✓"; position: absolute; left: 0; color: var(--pos); font-weight: 800; }
+.plan-action { width: 100%; justify-content: center; margin-top: auto; }
+.plan-soon { cursor: default; user-select: none; }
+.plan-fine { color: var(--dim) !important; font-size: 12px !important; text-align: center; margin: 12px 0 0 !important; }
+.plan-compare, .plans-faq { padding: 80px 0 0; max-width: 920px; margin: 0 auto; }
+.compare-table { overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+.compare-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(80px, .7fr) minmax(90px, .8fr); gap: 12px; padding: 15px 20px; border-bottom: 1px solid var(--line-soft); align-items: center; }
+.compare-row:last-child { border-bottom: 0; }
+.compare-row > :not(:first-child) { text-align: center; }
+.compare-row strong { color: var(--pos); }
+.compare-head { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; background: var(--glass); }
+.faq-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.faq-grid article { padding: 22px; border: 1px solid var(--line); background: var(--panel); border-radius: 14px; }
+.faq-grid h3 { margin: 0 0 8px; font-size: 16px; }
+.faq-grid p { margin: 0; color: var(--muted); line-height: 1.55; font-size: 14px; }
+
+@media (max-width: 760px) {
+  .plan-grid, .faq-grid { grid-template-columns: 1fr; }
+  .plans-hero { padding-top: 46px; }
+  .plan-card { padding: 26px 22px; }
+}
+@media (max-width: 560px) {
+  .compare-row { grid-template-columns: minmax(0, 1.5fr) 58px 74px; padding: 13px 12px; gap: 6px; font-size: 13px; }
+  .plan-card-head { flex-direction: column; }
+  .plan-price { text-align: left; }
+}

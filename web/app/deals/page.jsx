@@ -6,7 +6,7 @@ import {
   byCompany, byDay, count, dayLabel, mcapLabel, mcapTier, money, name, price,
 } from "../fmt";
 
-const PAGE = 40;
+const PAGE = 10;
 
 // Rows shown on a company card before the rest fold away.
 const PER_CARD = 5;
@@ -161,14 +161,15 @@ export default function DealsPage() {
           </section>
         ) : null}
 
-        <section className="controls">
-          <div className="seg">
+        <section className="controls" aria-label="Filter bulk and block deals">
+          <div className="seg" role="group" aria-label="Trade direction">
             {[["all", "All"], ["buy", "Buying"], ["sell", "Selling"]].map(
               ([k, l]) => (
                 <button
                   key={k}
                   type="button"
                   className={side === k ? "on" : ""}
+                  aria-pressed={side === k}
                   onClick={() => setSide(k)}
                 >
                   {l}
@@ -176,13 +177,14 @@ export default function DealsPage() {
               )
             )}
           </div>
-          <div className="seg">
+          <div className="seg" role="group" aria-label="Deal type">
             {[["all", "Both kinds"], ["bulk", "Bulk"], ["block", "Block"]].map(
               ([k, l]) => (
                 <button
                   key={k}
                   type="button"
                   className={kind === k ? "on" : ""}
+                  aria-pressed={kind === k}
                   onClick={() => setKind(k)}
                 >
                   {l}
@@ -190,13 +192,14 @@ export default function DealsPage() {
               )
             )}
           </div>
-          <div className="seg">
+          <div className="seg" role="group" aria-label="Exchange">
             {[["all", "Both exchanges"], ["NSE", "NSE"], ["BSE", "BSE"]].map(
               ([k, l]) => (
                 <button
                   key={k}
                   type="button"
                   className={exch === k ? "on" : ""}
+                  aria-pressed={exch === k}
                   onClick={() => setExch(k)}
                 >
                   {l}
@@ -206,13 +209,15 @@ export default function DealsPage() {
           </div>
           <input
             className="search"
+            type="search"
+            aria-label="Search bulk and block deals"
             placeholder="Search a company or an investor"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
           {/* Whatever is on screen, as a spreadsheet - same filters, same
               days. A plain link, so the browser downloads it. */}
-          <a className="dl" href={`/api/deals?${query}&format=xlsx`}>
+          <a className="dl" aria-label="Download filtered bulk and block deals as Excel" href={`/api/deals?${query}&format=xlsx`}>
             <span aria-hidden="true">&darr;</span> Excel
           </a>
         </section>
@@ -231,11 +236,12 @@ export default function DealsPage() {
             seven-day window on its own could not answer. Days come from the
             API's own index, so a day with nothing in it is never offered. */}
         {data?.days?.length ? (
-          <section className="dates">
+          <section className="dates" aria-label="Filter bulk and block deals by day">
             <span className="lbl">Day</span>
             <button
               type="button"
               className={`chip ${day === "all" ? "on" : ""}`}
+              aria-pressed={day === "all"}
               onClick={() => setDay("all")}
             >
               All
@@ -245,6 +251,7 @@ export default function DealsPage() {
                 key={d}
                 type="button"
                 className={`chip ${day === d ? "on" : ""}`}
+                aria-pressed={day === d}
                 onClick={() => setDay(d)}
               >
                 {dayLabel(d)}
@@ -653,6 +660,24 @@ export default function DealsPage() {
         @media (max-width: 560px) {
           .deals-page .head h1 { font-size: 24px; }
           .deals-page .lede { font-size: 15px; }
+          .deals-page .controls { gap: 10px; }
+          .deals-page .seg {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+          .deals-page .seg button {
+            min-height: 44px;
+            padding: 8px 6px;
+            white-space: normal;
+            line-height: 1.25;
+          }
+          .deals-page .search { min-width: 0; height: 44px; font-size: 16px; }
+          .deals-page .dl { min-height: 44px; justify-content: center; }
+          .deals-page .dates { gap: 6px; }
+          .deals-page .chip, .deals-page .win { min-height: 40px; }
+          .deals-page .win { margin-left: 0; }
+          .deals-page .person, .deals-page .co { overflow-wrap: anywhere; }
           .deals-page .card { padding: 12px 14px 13px; }
           .deals-page .roll { margin-left: 0; width: 100%; white-space: normal; }
           .deals-page .t-top { flex-direction: column; gap: 5px; }

@@ -1,42 +1,72 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { SITE, PRICE_LABEL } from "./site";
+import { SITE } from "./site";
 import { useSiteAuth } from "./SiteAuth";
 
 export default function Nav() {
   const pathname = usePathname();
   const { ready, user, openAuth, logout } = useSiteAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => setMenuOpen(false), [pathname]);
+
+  const current = (href) =>
+    pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
 
   async function signOut() {
     await logout();
     window.location.href = "/";
   }
 
+  function link(href, label) {
+    return (
+      <a href={href} className={current(href) ? "nav-active" : ""} aria-current={current(href) ? "page" : undefined}>
+        {label}
+      </a>
+    );
+  }
+
   return (
     <nav className="nav">
       <div className="nav-in">
         <a className="nav-brand" href="/">
-          <span className="dot" /> {SITE.name}
+          <span className="dot" /><span>{SITE.name}</span>
         </a>
-        <div className="nav-links">
-          <a href="/dashboard">Dashboard</a>
-          <a href="/brief">Daily brief</a>
-          <a href="/insider">Insider trading</a>
-          <a href="/deals">Bulk &amp; block</a>
+        <button
+          type="button"
+          className="nav-menu"
+          aria-expanded={menuOpen}
+          aria-controls="primary-navigation"
+          aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span /><span /><span />
+        </button>
+        <div className={`nav-links${menuOpen ? " open" : ""}`} id="primary-navigation">
+          {link("/dashboard", "Dashboard")}
+          {link("/brief", "Daily brief")}
+          {link("/insider", "Insider trading")}
+          {link("/deals", "Bulk & block")}
           {user ? (
-            <button type="button" className="nav-account" onClick={signOut}>Log out</button>
+            <>
+              <button type="button" className="nav-account nav-logout" onClick={signOut}>Log out</button>
+            </>
           ) : ready ? (
             <button
               type="button"
               className="nav-account"
-              onClick={() => openAuth({ clear: true, returnTo: pathname === "/" ? "/dashboard" : null })}
+              onClick={() => {
+                setMenuOpen(false);
+                openAuth({ clear: true, returnTo: pathname === "/" ? "/dashboard" : null });
+              }}
             >
               Sign in
             </button>
           ) : null}
-          <a className="nav-cta" href="/join">
-            {SITE.free ? "Join free" : `Join · ${PRICE_LABEL}`}
+          <a className="nav-cta" href="/pricing" aria-current={current("/pricing") ? "page" : undefined}>
+            Plans
           </a>
         </div>
       </div>
