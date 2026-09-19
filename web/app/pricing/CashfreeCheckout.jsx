@@ -159,7 +159,7 @@ export default function CashfreeCheckout() {
         {buttonText}
       </button>
 
-      {access?.trialActive && (
+      {access?.trialActive && !access?.paidActive && (
         <button
           className="btn-lg btn-ghost plan-action checkout-early-payment"
           type="button"
@@ -193,10 +193,10 @@ export default function CashfreeCheckout() {
 
       {notice && <p className={`checkout-notice ${notice.type}`} role="status">{notice.text}</p>}
       <p className="plan-fine">
-        {access?.trialActive
-          ? `Free trial active until ${new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "long", year: "numeric" }).format(new Date(access.trialEndsAt))}. Pay now only if you want paid access to begin immediately.`
-          : access?.paidActive
-            ? `Premium active until ${new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "long", year: "numeric" }).format(new Date(access.paidEndsAt))}.`
+        {access?.paidActive
+          ? `Plan active until ${new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "long", year: "numeric" }).format(new Date(access.paidEndsAt))}.`
+          : access?.trialActive
+            ? `Free trial active until ${new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "long", year: "numeric" }).format(new Date(access.trialEndsAt))}. Pay now only if you want paid access to begin immediately.`
             : access?.trialAvailable
               ? "No card required. No automatic charge after seven days."
               : "One-time payment. Premium remains active for three months."}
