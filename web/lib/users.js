@@ -247,6 +247,12 @@ export async function listUsersForAdmin(limit = 5000) {
         kitSyncStatus: 1,
         kitSyncAttemptedAt: 1,
         kitSyncedAt: 1,
+        subscriptionPlan: 1,
+        subscriptionStatus: 1,
+        subscriptionStartsAt: 1,
+        subscriptionEndsAt: 1,
+        latestPaymentOrderId: 1,
+        premiumOrderIds: 1,
       },
     }
   ).sort({ createdAt: -1 }).limit(Math.max(1, Math.min(Number(limit) || 5000, 5000))).toArray();

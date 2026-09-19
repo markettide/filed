@@ -89,6 +89,7 @@ export async function GET(request) {
       ["Verified logins", data.totals.verified],
       ["Newsletter subscribers", data.totals.subscribed],
       ["Members with phone", data.totals.withPhone],
+      ["Active paid members", data.totals.paid],
       ["Reading now", data.liveReaders.length],
       ["Visitors on selected date", data.engagement.totals.visitors],
       ["Sessions on selected date", data.engagement.totals.sessions],
@@ -100,8 +101,8 @@ export async function GET(request) {
     metrics.forEach((row) => overview.addRow(row));
     styleTable(overview, 5, overview.rowCount, 2);
     overview.getCell("B6").numFmt = "@";
-    for (let row = 7; row <= 14; row += 1) overview.getCell(row, 2).numFmt = "#,##0";
-    for (let row = 15; row <= 16; row += 1) overview.getCell(row, 2).numFmt = "#,##0.0";
+    for (let row = 7; row <= 15; row += 1) overview.getCell(row, 2).numFmt = "#,##0";
+    for (let row = 16; row <= 17; row += 1) overview.getCell(row, 2).numFmt = "#,##0.0";
     overview.getCell("D5").value = "Acquisition source";
     overview.getCell("E5").value = "Members";
     Object.entries(data.sourceCounts).sort((a, b) => b[1] - a[1]).forEach(([source, count], index) => {
@@ -177,6 +178,20 @@ export async function GET(request) {
     sessions.getColumn(5).numFmt = "#,##0.0";
     sessions.getColumn(4).numFmt = "@";
     sessions.getColumn(7).numFmt = sessions.getColumn(8).numFmt = "dd-mmm-yyyy hh:mm";
+
+    const paidMembers = workbook.addWorksheet("Paid Members", { properties: { tabColor: { argb: "17B26A" } } });
+    title(paidMembers, "Active paid members", "Verified successful payments with current Premium access. Trial-only members are excluded.");
+    addRows(paidMembers,
+      ["Email", "Phone", "Amount", "Currency", "Paid on", "Order ID", "Access starts", "Access ends", "Status"],
+      data.paidMembers.map((member) => [
+        member.email, phoneText(member.phone), member.amount, member.currency, asDate(member.paidAt),
+        member.orderId, asDate(member.startsAt), asDate(member.endsAt), member.status,
+      ]),
+      [36, 19, 14, 12, 22, 34, 22, 22, 14]
+    );
+    paidMembers.getColumn(2).numFmt = "@";
+    paidMembers.getColumn(3).numFmt = "₹#,##0.00";
+    for (const column of [5, 7, 8]) paidMembers.getColumn(column).numFmt = "dd-mmm-yyyy hh:mm";
 
     const members = workbook.addWorksheet("Members");
     title(members, "All members", "Email, phone, source and account status from the Market Tide member database.");

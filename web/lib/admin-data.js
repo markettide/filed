@@ -1,5 +1,6 @@
 import { listEmails } from "./store";
 import { listUsersForAdmin } from "./users";
+import { listPaidOrdersForAdmin } from "./payments";
 import { dailyEngagement, engagementTrend, liveEngagement } from "./engagement";
 
 const NEWSLETTER_SOURCES = new Set(["brief", "landing", "newsletter", "legacy-waitlist"]);
@@ -78,8 +79,9 @@ async function traffic() {
 }
 
 export async function adminData(selectedDate, trendDays = 30, options = {}) {
-  const [mongoRows, waitlistRows, visitTotals, engagement, liveReaders, trend] = await Promise.all([
+  const [mongoRows, paidOrders, waitlistRows, visitTotals, engagement, liveReaders, trend] = await Promise.all([
     listUsersForAdmin(),
+    listPaidOrdersForAdmin(),
     listEmails(),
     traffic(),
     dailyEngagement(selectedDate),
@@ -157,6 +159,47 @@ export async function adminData(selectedDate, trendDays = 30, options = {}) {
       )
     : rows;
   const memberResult = paginate(matchingMembers, options.memberPage, options.all);
+  const now = new Date();
+  const paidOrderById = new Map(paidOrders.map((order) => [order.orderId, order]));
+  const latestPaidOrderByEmail = new Map();
+  for (const order of paidOrders) {
+    const email = String(order.email || "").trim().toLowerCase();
+    if (email && !latestPaidOrderByEmail.has(email)) latestPaidOrderByEmail.set(email, order);
+  }
+  const paidMembers = mongoRows
+    .filter((user) =>
+      user.subscriptionPlan === "premium" &&
+      user.subscriptionStatus === "active" &&
+      user.subscriptionEndsAt &&
+      new Date(user.subscriptionEndsAt) > now
+    )
+    .map((user) => {
+      const email = String(user.email || "").trim().toLowerCase();
+      const order = paidOrderById.get(user.latestPaymentOrderId) || latestPaidOrderByEmail.get(email) || null;
+      return {
+        email,
+        phone: user.phone || order?.phone || null,
+        orderId: order?.orderId || user.latestPaymentOrderId || null,
+        amount: Number(order?.amount || 0),
+        currency: order?.currency || "INR",
+        paidAt: iso(order?.paidAt || order?.createdAt),
+        startsAt: iso(user.subscriptionStartsAt),
+        endsAt: iso(user.subscriptionEndsAt),
+        status: user.subscriptionStatus,
+      };
+    })
+    .sort((a, b) => String(b.paidAt || b.startsAt || "").localeCompare(String(a.paidAt || a.startsAt || "")));
+  const paidNeedle = String(options.paidQuery || "").trim().toLowerCase();
+  const matchingPaidMembers = paidNeedle
+    ? paidMembers.filter((member) =>
+        [member.email, member.phone, member.orderId]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(paidNeedle)
+      )
+    : paidMembers;
+  const paidResult = paginate(matchingPaidMembers, options.paidPage, options.all);
   const visitorResult = paginate(engagementVisitors, options.visitorPage, options.all);
   const liveResult = paginate(identifiedLiveReaders, options.livePage, options.all);
 
@@ -168,6 +211,7 @@ export async function adminData(selectedDate, trendDays = 30, options = {}) {
       verified: rows.filter((row) => row.verified).length,
       subscribed: rows.filter((row) => row.subscribed).length,
       withPhone: rows.filter((row) => row.phone).length,
+      paid: paidMembers.length,
     },
     sourceCounts,
     engagement: {
@@ -180,5 +224,7 @@ export async function adminData(selectedDate, trendDays = 30, options = {}) {
     trend,
     members: memberResult.items,
     memberPagination: memberResult.pagination,
+    paidMembers: paidResult.items,
+    paidPagination: paidResult.pagination,
   };
 }

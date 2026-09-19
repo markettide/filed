@@ -21,6 +21,8 @@ export async function GET(request) {
       {
         memberPage: request.nextUrl.searchParams.get("memberPage"),
         memberQuery: request.nextUrl.searchParams.get("memberQuery"),
+        paidPage: request.nextUrl.searchParams.get("paidPage"),
+        paidQuery: request.nextUrl.searchParams.get("paidQuery"),
         visitorPage: request.nextUrl.searchParams.get("visitorPage"),
         livePage: request.nextUrl.searchParams.get("livePage"),
       }

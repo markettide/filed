@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 
 const number = (value) => Number(value || 0).toLocaleString("en-IN");
 
+const money = (value, currency = "INR") => new Intl.NumberFormat("en-IN", {
+  style: "currency", currency, maximumFractionDigits: 0,
+}).format(Number(value || 0));
+
 function when(value) {
   if (!value) return "—";
   return new Date(value).toLocaleString("en-IN", {
@@ -87,7 +91,9 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
   const [query, setQuery] = useState("");
+  const [paidQuery, setPaidQuery] = useState("");
   const [memberPage, setMemberPage] = useState(1);
+  const [paidPage, setPaidPage] = useState(1);
   const [visitorPage, setVisitorPage] = useState(1);
   const [livePage, setLivePage] = useState(1);
   const [selectedDate, setSelectedDate] = useState(todayIndia);
@@ -99,11 +105,14 @@ export default function AdminDashboard() {
     const params = new URLSearchParams({
       date,
       memberPage: String(overrides.memberPage ?? memberPage),
+      paidPage: String(overrides.paidPage ?? paidPage),
       visitorPage: String(overrides.visitorPage ?? visitorPage),
       livePage: String(overrides.livePage ?? livePage),
     });
     const memberQuery = overrides.memberQuery ?? query;
     if (memberQuery.trim()) params.set("memberQuery", memberQuery.trim());
+    const nextPaidQuery = overrides.paidQuery ?? paidQuery;
+    if (nextPaidQuery.trim()) params.set("paidQuery", nextPaidQuery.trim());
     const response = await fetch(`/api/admin/stats?${params}`, { cache: "no-store" });
     if (sequence !== requestSequence.current) return;
     if (response.status === 401) {
@@ -138,7 +147,7 @@ export default function AdminDashboard() {
     if (status !== "ready") return undefined;
     const timer = window.setInterval(() => load(selectedDate, true), 30000);
     return () => window.clearInterval(timer);
-  }, [status, selectedDate, memberPage, visitorPage, livePage, query]);
+  }, [status, selectedDate, memberPage, paidPage, visitorPage, livePage, query, paidQuery]);
 
   useEffect(() => {
     if (status !== "ready") return undefined;
@@ -148,6 +157,15 @@ export default function AdminDashboard() {
     }, 350);
     return () => window.clearTimeout(timer);
   }, [query]);
+
+  useEffect(() => {
+    if (status !== "ready") return undefined;
+    const timer = window.setTimeout(() => {
+      setPaidPage(1);
+      load(selectedDate, true, { paidPage: 1, paidQuery });
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [paidQuery]);
 
   async function login(event) {
     event.preventDefault();
@@ -175,6 +193,7 @@ export default function AdminDashboard() {
   }
 
   const shown = data?.members || [];
+  const paidShown = data?.paidMembers || [];
 
   if (status !== "ready") {
     return (
@@ -216,6 +235,7 @@ export default function AdminDashboard() {
     ["Verified logins", data.totals.verified],
     ["Newsletter", data.totals.subscribed],
     ["Phone numbers", data.totals.withPhone],
+    ["Paid members", data.totals.paid],
     ["Unverified", data.totals.members - data.totals.verified],
     ["Reading now", data.traffic.live],
     ["Unique visitors", data.traffic.unique],
@@ -386,6 +406,49 @@ export default function AdminDashboard() {
             <div key={source}><span>{source}</span><b>{number(count)}</b></div>
           ))}
         </div>
+      </section>
+
+      <section className="admin-panel">
+        <div className="admin-panel-head admin-members-head">
+          <div>
+            <p className="admin-kicker">Revenue</p>
+            <h2>Paid members</h2>
+          </div>
+          <input
+            type="search"
+            placeholder="Search paid email, phone or order…"
+            value={paidQuery}
+            onChange={(event) => setPaidQuery(event.target.value)}
+          />
+        </div>
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr><th>Member</th><th>Phone</th><th>Amount</th><th>Paid on</th><th>Order ID</th><th>Access active until</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {paidShown.map((member) => (
+                <tr key={member.orderId || member.email}>
+                  <td><b>{member.email}</b></td>
+                  <td>{member.phone || "—"}</td>
+                  <td>{money(member.amount, member.currency)}</td>
+                  <td>{when(member.paidAt)}</td>
+                  <td>{member.orderId || "—"}</td>
+                  <td>{when(member.endsAt)}</td>
+                  <td><div className="admin-tags"><span>Active paid</span></div></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!paidShown.length && <p className="admin-empty">No active paid members match that search.</p>}
+        </div>
+        <Pager
+          pagination={data.paidPagination}
+          onPage={(page) => {
+            setPaidPage(page);
+            load(selectedDate, true, { paidPage: page });
+          }}
+        />
       </section>
 
       <section className="admin-panel">

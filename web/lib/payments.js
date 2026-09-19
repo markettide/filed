@@ -96,6 +96,31 @@ export async function findOrder(orderId) {
   return orders.findOne({ orderId }, { projection: { _id: 0, paymentSessionId: 0 } });
 }
 
+/** Private admin view. Callers must enforce admin authentication first. */
+export async function listPaidOrdersForAdmin(limit = 5000) {
+  const { orders } = await collections();
+  return orders.find(
+    { status: "PAID" },
+    {
+      projection: {
+        _id: 0,
+        orderId: 1,
+        email: 1,
+        phone: 1,
+        planId: 1,
+        amount: 1,
+        currency: 1,
+        status: 1,
+        paidAt: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    }
+  ).sort({ paidAt: -1, createdAt: -1 })
+    .limit(Math.max(1, Math.min(Number(limit) || 5000, 5000)))
+    .toArray();
+}
+
 function addCalendarMonths(date, months) {
   const result = new Date(date);
   const originalDay = result.getUTCDate();
