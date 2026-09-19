@@ -11,22 +11,22 @@ export default function Refund() {
 
       <p className="callout">
         <strong>The short version.</strong> You can leave whenever you like — no
-        lock-in, no notice. But the annual membership fee is{" "}
+        lock-in, no notice. The seven-day trial is free and needs no card. The
+        ₹299 three-month Premium fee is{" "}
         <strong>non-refundable</strong> once you have joined. We only refund if we
-        charged you twice, or if we stop running the service during the year you
-        paid for.
+        charged you twice, your payment succeeded but access was not provided,
+        or we stop running the service during the term you paid for.
       </p>
 
       <h2>1. What you are buying</h2>
       <p>
-        Membership is a one-year subscription, paid once, up front. It gives you
-        access to the members&apos; community and the full dashboard for twelve
-        months from the day you join.
+        Premium is a three-month plan, paid once up front. It gives you access
+        to the full dashboard and Premium tools for three months after Cashfree
+        verifies the payment.
       </p>
       <p>
-        The public dashboard and the daily WhatsApp brief are free and are not
-        part of this — you do not need to pay for those, and cancelling
-        membership does not take them away.
+        The daily email newsletter is free and is not part of this payment.
+        Ending or allowing Premium to expire does not take the newsletter away.
       </p>
 
       <h2>2. Cancelling</h2>
@@ -43,17 +43,17 @@ export default function Refund() {
       <h2>3. The fee is non-refundable</h2>
       <p>
         <strong>
-          Once you have joined, the annual fee is not refundable — in part or in
+          Once paid access has been activated, the three-month fee is not refundable — in part or in
           full — for any reason, including if you stop using it or change your
           mind.
         </strong>{" "}
-        Access continues to the end of the twelve months you paid for, whether you
+        Access continues to the end of the three months you paid for, whether you
         use it or not.
       </p>
       <p>
         We say this plainly because we would rather you decide carefully than feel
-        misled later. The dashboard is free to use for as long as you like before
-        you pay, and we would genuinely rather you spent a week with it first.
+        misled later. Every account gets one free seven-day Premium trial before
+        payment is offered, with no card required and no automatic charge.
       </p>
 
       <h2>4. The two exceptions</h2>
@@ -64,8 +64,8 @@ export default function Refund() {
           membership. We refund the duplicate in full.
         </li>
         <li>
-          <strong>We stop running the service</strong> during a year you have paid
-          for. We refund the unused whole months.
+          <strong>We stop running the service</strong> during a term you have paid
+          for. We refund the unused portion of the term.
         </li>
       </ul>
       <p>

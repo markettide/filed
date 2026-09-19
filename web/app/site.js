@@ -17,8 +17,7 @@ export const SITE = {
 
 };
 
-// Billing is not connected yet, so these values describe the offer without
-// granting or removing access on their own. Keeping both plans here prevents
+// Keeping both plans here prevents
 // the home, pricing and community pages from drifting apart.
 export const PLANS = {
   free: {
@@ -34,6 +33,5 @@ export const PLANS = {
     price: 299,
     months: 3,
     description: "The complete Market Tide research workflow.",
-    launchingSoon: true,
   },
 };

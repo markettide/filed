@@ -16,7 +16,13 @@ async function collection() {
     const client = new MongoClient(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 6000,
     });
-    clientPromise = client.connect();
+    clientPromise = client.connect().catch((error) => {
+      // A short DNS/network interruption must not poison this server process
+      // forever. Clear the cached rejection so the next request can reconnect.
+      clientPromise = undefined;
+      indexesReady = undefined;
+      throw error;
+    });
   }
   const client = await clientPromise;
   const users = client.db(process.env.MONGODB_DB || "market_tide").collection("users");
@@ -29,8 +35,73 @@ export async function findByEmail(email) {
   const users = await collection();
   return users.findOne(
     { email },
-    { projection: { _id: 0, email: 1, phone: 1, emailVerifiedAt: 1 } }
+    {
+      projection: {
+        _id: 0,
+        email: 1,
+        name: 1,
+        phone: 1,
+        emailVerifiedAt: 1,
+        createdAt: 1,
+        briefSubscribed: 1,
+        briefSubscribedAt: 1,
+        kitSyncStatus: 1,
+        subscriptionPlan: 1,
+        subscriptionStatus: 1,
+        subscriptionStartsAt: 1,
+        subscriptionEndsAt: 1,
+        latestPaymentOrderId: 1,
+        premiumOrderIds: 1,
+        trialStartedAt: 1,
+        trialEndsAt: 1,
+      },
+    }
   );
+}
+
+/** Start the single card-free Premium trial available to each account. */
+export async function startPremiumTrial(email, days = 7) {
+  const users = await collection();
+  const now = new Date();
+  const endsAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  const result = await users.updateOne(
+    {
+      email,
+      $or: [
+        { trialStartedAt: { $exists: false } },
+        { trialStartedAt: null },
+      ],
+    },
+    {
+      $set: {
+        trialStartedAt: now,
+        trialEndsAt: endsAt,
+        updatedAt: now,
+      },
+    }
+  );
+
+  const profile = await findByEmail(email);
+  return { started: result.modifiedCount === 1, profile };
+}
+
+/** Update the small set of identity fields a reader is allowed to manage. */
+export async function updateUserProfile({ email, name, phone }) {
+  const users = await collection();
+  const now = new Date();
+  await users.updateOne(
+    { email },
+    {
+      $set: {
+        name,
+        phone,
+        updatedAt: now,
+      },
+      $setOnInsert: { email, createdAt: now },
+    },
+    { upsert: true }
+  );
+  return findByEmail(email);
 }
 
 export async function saveVerifiedUser({ email, phone }) {

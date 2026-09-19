@@ -13,6 +13,7 @@ import { currentUser } from "../../../../lib/session";
 import { authReady } from "../../../../lib/auth-ready";
 import { emailConfigured } from "../../../../lib/notify";
 import { findByEmail } from "../../../../lib/users";
+import { accessForProfile } from "../../../../lib/entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,7 +34,11 @@ export async function GET(request) {
     user: user ? {
       id: user.id.slice(user.id.indexOf(":") + 1),
       channel: user.channel,
+      name: profile?.name || null,
       phone: profile?.phone || null,
+      newsletterSubscribed: Boolean(profile?.briefSubscribed),
+      plan: accessForProfile(profile).level,
+      access: accessForProfile(profile),
     } : null,
     channels: {
       email: emailReady,

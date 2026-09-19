@@ -45,10 +45,40 @@ code. Their normalized mobile number is stored in MongoDB only after successful
 verification. Returning readers enter only their email, and a signed session
 keeps them logged in for 30 days.
 
+`SESSION_VERSION` is embedded in every signed login cookie. Changing it signs
+out every account on the next request. The Premium-trial launch includes a new
+default version, so cookies created by earlier deployments are rejected and all
+readers must sign in again once.
+
 The Daily Brief page uses a Market Tide-owned signup form. After the member signs
 in and explicitly subscribes, the server saves the subscription in MongoDB first
 and upserts the address into the Kit audience. The Kit operation is idempotent,
 so subscribing twice does not create duplicate subscribers.
+
+### Cashfree sandbox checkout
+
+Each verified account can start one card-free seven-day Premium trial. Trial
+access expires automatically; the Daily Brief stays free while the dashboard,
+insider-trading and bulk/block-deal tools lock. A reader may purchase Premium
+during the trial or wait until it ends. An early purchase starts the paid
+three-month term immediately after Cashfree verifies the payment.
+
+The paid Premium plan is a one-time ₹299 payment for three months of access,
+with no automatic renewal. Add the Payment Gateway test App ID and Secret Key
+to `.env.local`, set `CASHFREE_ENV=sandbox`, and open `/pricing`. Orders are
+created on the server, so the price and secret key are never trusted to the
+browser.
+
+Cashfree returns the customer to `/payment/return`, where the server checks the
+order directly before enabling Premium. `/api/payments/webhook` provides the
+same verified activation path for deployed environments. Webhook signatures
+are checked against the untouched request body, and duplicate payment events do
+not extend the same order twice.
+
+Cashfree cannot deliver a webhook to localhost without a public tunnel. The
+server-side return check makes the complete successful-payment flow testable
+locally; use a Vercel preview URL or a secure tunnel when testing webhook
+delivery itself.
 
 To create a one-time CSV containing only explicit Daily Brief subscribers, run:
 

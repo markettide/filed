@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import {
   recent, configured, applyFilters, isImportantRow,
 } from "../../../../lib/announcements";
+import { requirePremiumAccess } from "../../../../lib/entitlements";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -31,6 +32,8 @@ const IMPACT_FILL = {
 };
 
 export async function GET(request) {
+  const entitlement = await requirePremiumAccess(request);
+  if (entitlement instanceof Response) return entitlement;
   if (!configured()) {
     return new Response("Announcements storage isn't configured yet.", { status: 503 });
   }

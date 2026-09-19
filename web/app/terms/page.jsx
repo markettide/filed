@@ -71,16 +71,10 @@ export default function Terms() {
 
       <h2>6. Payment</h2>
       <p>
-        Membership is a one-year subscription, prepaid, currently{" "}
-        {LEGAL.plans.map((p, i) => (
-          <span key={p.name}>
-            {i > 0 ? ", " : ""}₹{p.price.toLocaleString("en-IN")} for {p.name}
-          </span>
-        ))}
-        . Prices are in Indian rupees. Payments are handled by a third-party
-        payment gateway; we never see or store your card details. The founding
-        price is limited to the first 500 members, after which the standard
-        price applies to new members.
+        Each account may use one card-free seven-day Premium trial. It does not
+        renew or turn into a charge. After the trial, Premium is ₹299 for three
+        months, paid once in advance. Prices are in Indian rupees. Payments are
+        handled by Cashfree; we never see or store your card details.
       </p>
       <p>
         We may change prices for future terms. A change never affects a term you
@@ -89,9 +83,10 @@ export default function Terms() {
 
       <h2>7. Cancelling and refunds</h2>
       <p>
-        You may leave at any time. The annual membership fee is{" "}
+        You may leave at any time. The three-month Premium fee is{" "}
         <strong>non-refundable</strong> once you have joined, except where you
-        were charged twice or we stop running the service during your paid year.
+        were charged twice, a payment succeeded but access was not provided, or
+        we stop running the service during your paid term.
         Our <a href="/refund">Refund and Cancellation Policy</a> sets this out in
         full and forms part of these terms.
       </p>
@@ -102,7 +97,7 @@ export default function Terms() {
         To the extent the law allows, we are not liable for trading losses,
         missed opportunities, or decisions taken on the basis of anything you
         read here. Where liability cannot be excluded, it is limited to the
-        amount you paid us in the twelve months before the claim.
+        amount you paid us for the current three-month term.
       </p>
       <p>Nothing here limits liability for fraud, or for anything the law says cannot be limited.</p>
 

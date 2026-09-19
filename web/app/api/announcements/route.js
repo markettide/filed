@@ -1,4 +1,5 @@
 import { recent, configured, isImportantRow } from "../../../lib/announcements";
+import { requirePremiumAccess } from "../../../lib/entitlements";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -38,6 +39,8 @@ function inBand(row, band) {
 }
 
 export async function GET(request) {
+  const entitlement = await requirePremiumAccess(request);
+  if (entitlement instanceof Response) return entitlement;
   if (!configured()) {
     return Response.json(
       { error: "Announcements storage isn't configured yet." }, { status: 503 });
@@ -182,7 +185,7 @@ export async function GET(request) {
         headers: {
           // Browsers revalidate, while Vercel's CDN can reuse the same response
           // for two minutes instead of running the function for every visitor.
-          "Cache-Control": "public, max-age=0, s-maxage=120, stale-while-revalidate=600",
+          "Cache-Control": "private, no-store",
         },
       });
   } catch (err) {

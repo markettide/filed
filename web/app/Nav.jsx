@@ -51,6 +51,7 @@ export default function Nav() {
           {link("/deals", "Bulk & block")}
           {user ? (
             <>
+              {link("/profile", "Profile")}
               <button type="button" className="nav-account nav-logout" onClick={signOut}>Log out</button>
             </>
           ) : ready ? (

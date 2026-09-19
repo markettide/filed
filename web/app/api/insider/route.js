@@ -1,6 +1,7 @@
 import { insiderTrades, configured, applyFilters, isPledge } from "../../../lib/insider";
 import { workbook, download, stamp } from "../../../lib/sheet";
 import { name } from "../../fmt";
+import { requirePremiumAccess } from "../../../lib/entitlements";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -44,6 +45,8 @@ const COLUMNS = [
 ];
 
 export async function GET(request) {
+  const entitlement = await requirePremiumAccess(request);
+  if (entitlement instanceof Response) return entitlement;
   if (!configured()) {
     return Response.json(
       { error: "Insider trading storage isn't configured yet." },

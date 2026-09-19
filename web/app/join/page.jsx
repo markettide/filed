@@ -118,7 +118,7 @@ export default function Join() {
         {/* ---------------- hero ---------------- */}
         <section className="mk-hero">
           <div className="launch-banner">
-            Included with Premium · launching soon
+            Included with Premium
           </div>
 
           <h1 className="mk-h1">
@@ -153,10 +153,10 @@ export default function Join() {
 
           <div className="mk-ctas">
             <a className="btn-lg btn-grad" href="#join">
-              Join the Premium launch list
+              Join the Premium community
             </a>
             <a className="btn-lg btn-ghost" href="/dashboard" data-auth-required>
-              Explore the dashboard preview
+              Explore the Premium dashboard
             </a>
           </div>
         </section>
@@ -200,7 +200,7 @@ export default function Join() {
           <div className="price-wrap">
             <div className="price-card">
               <p className="mk-kicker" style={{ marginBottom: 4 }}>
-                Premium launch list
+                Premium community
               </p>
               <div className="price-tag">
                 <b>₹{PLANS.premium.price}</b>
@@ -215,15 +215,15 @@ export default function Join() {
                 <div className="seatbar-track">
                   <div className="seatbar-fill" style={{ width: "18%" }} />
                 </div>
-                <span>No card or payment is needed to join the launch list.</span>
+                <span>No card or payment is needed to register your interest.</span>
               </div>
 
               {state === "done" ? (
                 <div className="done">
-                  <b>You&apos;re on the Premium launch list.</b>
+                  <b>Your interest is registered.</b>
                   <p>
-                    We&apos;ll message you before Premium opens with the final
-                    joining and payment details.
+                    We&apos;ll send you the community joining details for your
+                    Premium access.
                   </p>
                   <a
                     className="wa-btn"
@@ -274,14 +274,14 @@ export default function Join() {
                         />
                       </div>
                       <button type="submit" disabled={state === "sending"}>
-                        {state === "sending" ? "Joining…" : "Join the launch list"}
+                        {state === "sending" ? "Joining…" : "Register interest"}
                       </button>
                     </div>
                     {error && <p className="err">{error}</p>}
                   </form>
                   <p className="note" style={{ marginTop: 10 }}>
-                    Nothing to pay today. We&apos;ll show the price and terms again
-                    before asking you to subscribe.
+                    Start your free trial from the Plans page. Payment is offered
+                    only after the trial ends.
                   </p>
                 </>
               )}
@@ -323,7 +323,7 @@ export default function Join() {
         {/* ---------------- closing ---------------- */}
         <section className="mk-sec">
           <div className="finale">
-            <h2>Premium is launching soon</h2>
+            <h2>Included with Premium</h2>
             <p className="closing">
               The full research workspace and private investor community, together
               for ₹{PLANS.premium.price} every {PLANS.premium.months} months.
@@ -339,7 +339,7 @@ export default function Join() {
             </p>
             <div className="mk-ctas">
               <a className="btn-lg btn-grad" href="#join">
-                Join the launch list
+                Join the Premium community
               </a>
               <a
                 className="btn-lg btn-wa"

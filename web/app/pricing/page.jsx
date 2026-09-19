@@ -1,6 +1,7 @@
 import Nav from "../Nav";
 import MkFooter from "../MkFooter";
 import { PLANS } from "../site";
+import CashfreeCheckout from "./CashfreeCheckout";
 
 export const metadata = {
   title: "Pricing — Market Tide",
@@ -30,9 +31,9 @@ export default function PricingPage() {
           <h1 className="mk-h1">Read less noise.{" "}<br /><span className="grad">Know what matters.</span></h1>
           <p className="mk-sub">
             Keep the morning newsletter free, or unlock the complete Market Tide
-            workflow with one straightforward three-month plan.
+            workflow with a card-free seven-day trial and one straightforward three-month plan.
           </p>
-          <span className="launch-pill">Premium launching soon</span>
+          <span className="launch-pill">Seven days free · No card required</span>
         </section>
 
         <section className="plan-grid" aria-label="Market Tide plans">
@@ -68,12 +69,10 @@ export default function PricingPage() {
             </div>
             <p>{PLANS.premium.description}</p>
             <ul className="plan-list">
+              <li>Seven-day free trial — no card required</li>
               {premiumFeatures.map((feature) => <li key={feature}>{feature}</li>)}
             </ul>
-            <span className="btn-lg btn-grad plan-action plan-soon" aria-disabled="true">
-              Coming soon
-            </span>
-            <p className="plan-fine">No payment is taken today. We will announce billing before Premium launches.</p>
+            <CashfreeCheckout />
           </article>
         </section>
 
@@ -108,12 +107,15 @@ export default function PricingPage() {
         <section className="plans-faq">
           <div className="mk-sec-head">
             <p className="mk-kicker">Good to know</p>
-            <h2 className="mk-h2">Before Premium opens</h2>
+            <h2 className="mk-h2">Premium payments</h2>
           </div>
           <div className="faq-grid">
             <article><h3>Can I stay on Free?</h3><p>Yes. The email newsletter remains the complete Free plan, with no card required.</p></article>
-            <article><h3>When will I be charged?</h3><p>Not yet. Payment is not connected. We will show the price and terms before asking you to subscribe.</p></article>
-            <article><h3>What happens to current access?</h3><p>Premium tools remain available during the launch preview. We will notify readers before access rules change.</p></article>
+            <article><h3>How does the free trial work?</h3><p>Each account can try all Premium tools free for seven days. No card is needed, and you will not be charged when it ends.</p></article>
+            <article><h3>Is this automatic renewal?</h3><p>No. ₹299 is a one-time payment that provides three months of Premium access.</p></article>
+            <article><h3>What happens after seven days?</h3><p>Premium tools lock automatically. Your free newsletter continues, and you can choose the ₹299 plan whenever you are ready.</p></article>
+            <article><h3>Can I pay before my trial ends?</h3><p>Yes. While your trial is active, choose Buy Premium now. Your paid three-month access begins as soon as Cashfree verifies the payment.</p></article>
+            <article><h3>When does paid Premium begin?</h3><p>Paid access begins only after Cashfree securely confirms that your payment succeeded.</p></article>
             <article><h3>Is this investment advice?</h3><p>No. Market Tide summarises public filings. Always read the original filing before acting.</p></article>
           </div>
         </section>

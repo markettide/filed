@@ -59,7 +59,7 @@ export default function Landing() {
             </a>
           </div>
           <p className="mk-ctanote">
-            Premium tools are open during launch preview. The daily email newsletter stays free.
+            Start with seven days of Premium free. The daily email newsletter always stays free.
           </p>
 
           {scanned ? (
@@ -287,7 +287,7 @@ export default function Landing() {
             </article>
 
             <article className="plan-card plan-card--featured">
-              <div className="plan-ribbon">Launching soon</div>
+              <div className="plan-ribbon">7-day free trial</div>
               <div className="plan-card-head">
                 <div><span className="plan-eyebrow">Complete access</span><h2>{PLANS.premium.name}</h2></div>
                 <div className="plan-price"><b>₹{PLANS.premium.price}</b><span>/ {PLANS.premium.months} months</span></div>
@@ -310,11 +310,11 @@ export default function Landing() {
         {/* ---------------- community teaser ---------------- */}
         <section className="mk-sec">
           <div className="finale">
-            <h2>Premium is nearly here.</h2>
+            <h2>Start with seven days free.</h2>
             <p>
-              Keep receiving the newsletter for free, or choose Premium at
-              ₹{PLANS.premium.price} for {PLANS.premium.months} months when subscriptions open.
-              Current dashboard access remains available during the launch preview.
+              Keep receiving the newsletter for free, or try the complete
+              workspace for seven days. After the trial, Premium is ₹{PLANS.premium.price}
+              for {PLANS.premium.months} months with no automatic renewal.
             </p>
             <div className="mk-ctas">
               <a className="btn-lg btn-grad" href="/pricing">

@@ -54,7 +54,7 @@ function AuthPanel({ ready = true, initialEmail = "", initialPhone = "", onAuthe
       <p className="auth-kicker">Member access</p>
       <h1 id="auth-title">Sign in to continue</h1>
       <p className="auth-copy">
-        Open the complete dashboard and daily brief with your email.
+        Sign in to manage your free newsletter, trial and Premium access.
         No password to remember.
       </p>
 
@@ -115,7 +115,7 @@ function AuthPanel({ ready = true, initialEmail = "", initialPhone = "", onAuthe
       )}
 
       {error && <p className="auth-error" role="alert">{error}</p>}
-      <p className="auth-trust">No password or OTP required during temporary access.</p>
+      <p className="auth-trust">Secure email-based member access.</p>
     </section>
   );
 }

@@ -20,6 +20,9 @@ import crypto from "node:crypto";
 
 export const COOKIE = "mt_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;   // a month
+// Bumping this value invalidates every previously issued login cookie. This
+// launch version intentionally requires all readers to sign in again once.
+const SESSION_VERSION = process.env.SESSION_VERSION || "premium-trial-2026-09-19";
 
 function b64url(buf) {
   return Buffer.from(buf).toString("base64url");
@@ -39,6 +42,7 @@ export function make({ id, channel }) {
     JSON.stringify({
       id,
       channel,
+      ver: SESSION_VERSION,
       exp: Math.floor(Date.now() / 1000) + MAX_AGE_SECONDS,
     })
   );
@@ -70,6 +74,7 @@ export function read(value) {
   // The signature proves we wrote it. It does not prove it is still current,
   // and a signed cookie is valid for ever unless something checks the date.
   if (!data.exp || data.exp < Math.floor(Date.now() / 1000)) return null;
+  if (data.ver !== SESSION_VERSION) return null;
 
   return { id: data.id, channel: data.channel };
 }
