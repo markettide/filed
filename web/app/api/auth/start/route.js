@@ -1,10 +1,12 @@
-/** Start a temporary OTP-free protected-page sign-in.
- * New reader: email -> phone -> session. Returning reader: email -> session.
+/** Start a secure email OTP sign-in.
+ * New reader: email -> phone -> OTP. Returning reader: email -> OTP.
  */
 
 import { normalisePhone } from "../../../../lib/phone";
-import { make, cookieHeader } from "../../../../lib/session";
-import { configured as usersConfigured, findByEmail, saveDirectUser } from "../../../../lib/users";
+import { authReady } from "../../../../lib/auth-ready";
+import { issue } from "../../../../lib/otp";
+import { findByEmail } from "../../../../lib/users";
+import { sendEmailCode } from "../../../../lib/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,8 +30,8 @@ export async function POST(request) {
   if (!email) {
     return Response.json({ error: "Enter a valid email address." }, { status: 400 });
   }
-  if (!usersConfigured()) {
-    return Response.json({ error: "Account storage is not connected yet." }, { status: 503 });
+  if (!authReady()) {
+    return Response.json({ error: "Secure sign-in is not configured yet." }, { status: 503 });
   }
 
   let existing;
@@ -60,28 +62,31 @@ export async function POST(request) {
 
   const id = `email:${email}`;
   try {
-    await saveDirectUser({ email, phone });
+    const issued = await issue(id, { phone });
+    if (!issued.ok) {
+      if (issued.reason === "too_many") {
+        return Response.json({
+          error: "Too many codes requested. Please wait before trying again.",
+          retryInSeconds: issued.retryInSeconds,
+        }, { status: 429, headers: { "Retry-After": String(issued.retryInSeconds || 900) } });
+      }
+      return Response.json({ error: "Email verification is not configured yet." }, { status: 503 });
+    }
+
+    const delivery = await sendEmailCode(email, issued.code);
+    if (!delivery.sent) throw new Error("Email delivery is not configured");
+    return Response.json({
+      ok: true,
+      needsCode: true,
+      email,
+      returning,
+      expiresInSeconds: issued.expiresInSeconds,
+    });
   } catch (error) {
-    console.error("[auth] could not save the account:", error.message || error);
+    console.error("[auth] could not send the sign-in code:", error.message || error);
     return Response.json(
-      { error: "We could not finish signing you in. Please try again." },
+      { error: "We could not send your sign-in code. Please try again." },
       { status: 503 }
     );
   }
-
-  const cookie = make({ id, channel: "email" });
-  if (!cookie) return Response.json({ error: "Signing in is not configured yet." }, { status: 503 });
-
-  return new Response(JSON.stringify({
-    ok: true,
-    authenticated: true,
-    email,
-    returning,
-    id: email,
-    channel: "email",
-    user: { id: email, channel: "email", phone },
-  }), {
-    status: 200,
-    headers: { "Content-Type": "application/json", "Set-Cookie": cookieHeader(cookie) },
-  });
 }

@@ -1,5 +1,14 @@
+import crypto from "node:crypto";
 import { getCashfreeOrder, validPaidOrder, verifyCashfreeWebhook } from "../../../../lib/cashfree";
-import { activatePaidOrder, findOrder, markOrderAttempt } from "../../../../lib/payments";
+import {
+  activatePaidOrder,
+  beginWebhookEvent,
+  findOrder,
+  finishWebhookEvent,
+  markOrderAttempt,
+  recordDispute,
+  recordRefund,
+} from "../../../../lib/payments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,13 +28,45 @@ export async function POST(request) {
     return Response.json({ error: "Invalid webhook payload." }, { status: 400 });
   }
 
-  const orderId = payload?.data?.order?.order_id;
+  const orderId = payload?.data?.order?.order_id
+    || payload?.data?.order_details?.order_id
+    || payload?.data?.refund?.order_id;
   const payment = payload?.data?.payment || {};
   if (!orderId) return Response.json({ ok: true, ignored: "No order ID." });
+
+  const refund = payload?.data?.refund || null;
+  const dispute = payload?.data?.dispute || null;
+  const providerReference = payment.cf_payment_id
+    || refund?.cf_refund_id
+    || refund?.refund_id
+    || dispute?.dispute_id;
+  const eventId = providerReference
+    ? `${payload.type || "UNKNOWN"}:${providerReference}`
+    : crypto.createHash("sha256").update(rawBody).digest("hex");
 
   try {
     const localOrder = await findOrder(orderId);
     if (!localOrder) return Response.json({ ok: true, ignored: "Unknown order." });
+
+    const shouldProcess = await beginWebhookEvent({ eventId, type: payload.type || "UNKNOWN", orderId });
+    if (!shouldProcess) return Response.json({ ok: true, duplicate: true });
+
+    if (refund) {
+      await recordRefund({
+        orderId,
+        refundId: refund.cf_refund_id || refund.refund_id,
+        status: refund.refund_status,
+        amount: refund.refund_amount,
+      });
+      await finishWebhookEvent(eventId);
+      return Response.json({ ok: true, status: refund.refund_status || "REFUND_RECORDED" });
+    }
+
+    if (dispute) {
+      await recordDispute({ orderId, dispute });
+      await finishWebhookEvent(eventId);
+      return Response.json({ ok: true, status: dispute.dispute_status || "DISPUTE_RECORDED" });
+    }
 
     await markOrderAttempt({
       orderId,
@@ -35,6 +76,7 @@ export async function POST(request) {
     });
 
     if (payment.payment_status !== "SUCCESS") {
+      await finishWebhookEvent(eventId);
       return Response.json({ ok: true, status: payment.payment_status || "IGNORED" });
     }
 
@@ -49,9 +91,15 @@ export async function POST(request) {
       cfPaymentId: payment.cf_payment_id,
       paidAt: payment.payment_time,
     });
+    await finishWebhookEvent(eventId);
     return Response.json({ ok: true, status: "PAID" });
   } catch (error) {
     console.error("[payments] webhook processing failed:", error.code || error.message || error);
+    try {
+      await finishWebhookEvent(eventId, "FAILED", error.code || error.message || "processing failed");
+    } catch (recordError) {
+      console.error("[payments] could not record webhook failure:", recordError.message || recordError);
+    }
     return Response.json({ error: "Webhook processing failed." }, { status: 500 });
   }
 }

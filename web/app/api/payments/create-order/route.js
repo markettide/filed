@@ -9,6 +9,7 @@ import { normalisePhone } from "../../../../lib/phone";
 import { currentUser } from "../../../../lib/session";
 import { findByEmail, saveDirectUser } from "../../../../lib/users";
 import { accessForProfile } from "../../../../lib/entitlements";
+import { rateLimit } from "../../../../lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export async function POST(request) {
   const email = emailFromSession(request);
   if (!email) return Response.json({ error: "Please sign in before purchasing Premium." }, { status: 401 });
   if (!cashfreeConfigured()) {
-    return Response.json({ error: "Cashfree test keys are not configured yet." }, { status: 503 });
+    return Response.json({ error: "Payments are not configured yet." }, { status: 503 });
   }
 
   let body = {};
@@ -34,6 +35,25 @@ export async function POST(request) {
   }
 
   try {
+    let allowance;
+    try {
+      allowance = await rateLimit({
+        scope: "checkout",
+        identifier: email,
+        maximum: 5,
+        windowSeconds: 15 * 60,
+      });
+    } catch (error) {
+      console.error("[payments] checkout rate limit unavailable:", error.message || error);
+      return Response.json({ error: "Checkout is temporarily unavailable. Please try again shortly." }, { status: 503 });
+    }
+    if (!allowance.allowed) {
+      return Response.json(
+        { code: "rate_limited", error: "Too many checkout attempts. Please wait before trying again." },
+        { status: 429, headers: { "Retry-After": String(allowance.retryInSeconds) } }
+      );
+    }
+
     const profile = await findByEmail(email);
     const access = accessForProfile(profile);
     if (access.paidActive) {

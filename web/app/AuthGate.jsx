@@ -6,6 +6,7 @@ function AuthPanel({ ready = true, initialEmail = "", initialPhone = "", onAuthe
   const [step, setStep] = useState("email");
   const [email, setEmail] = useState(() => String(initialEmail).trim().toLowerCase());
   const [phone, setPhone] = useState(() => String(initialPhone).replace(/\D/g, "").slice(-10));
+  const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -29,6 +30,10 @@ function AuthPanel({ ready = true, initialEmail = "", initialPhone = "", onAuthe
         setError(data.error || "We could not sign you in. Please try again.");
         return;
       }
+      if (data.needsCode) {
+        setStep("code");
+        return;
+      }
       onAuthenticated?.(data);
     } catch {
       setError("Could not reach the server. Check your connection and try again.");
@@ -45,6 +50,30 @@ function AuthPanel({ ready = true, initialEmail = "", initialPhone = "", onAuthe
   async function submitPhone(event) {
     event.preventDefault();
     await signIn(phone);
+  }
+
+  async function submitCode(event) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || "That code could not be verified.");
+        return;
+      }
+      onAuthenticated?.(data);
+    } catch {
+      setError("Could not reach the server. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -82,7 +111,7 @@ function AuthPanel({ ready = true, initialEmail = "", initialPhone = "", onAuthe
             Returning member? We&apos;ll recognize your email and won&apos;t ask for your phone again.
           </p>
         </form>
-      ) : (
+      ) : step === "phone" ? (
         <form onSubmit={submitPhone} className="auth-form">
           <div className="auth-identity">
             <span>Creating an account for</span><b>{email}</b>
@@ -103,7 +132,7 @@ function AuthPanel({ ready = true, initialEmail = "", initialPhone = "", onAuthe
             />
           </div>
           <button type="submit" disabled={busy || phone.length !== 10}>
-            {busy ? "Signing in…" : "Continue to Market Tide"}
+            {busy ? "Sending code…" : "Send sign-in code"}
           </button>
           <p className="auth-note">
             We ask for this once and save it securely for future sign-ins.
@@ -112,10 +141,36 @@ function AuthPanel({ ready = true, initialEmail = "", initialPhone = "", onAuthe
             Use a different email
           </button>
         </form>
+      ) : (
+        <form onSubmit={submitCode} className="auth-form">
+          <div className="auth-identity">
+            <span>We sent a six-digit code to</span><b>{email}</b>
+          </div>
+          <label htmlFor="gate-code">Sign-in code</label>
+          <input
+            id="gate-code"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            required
+            autoFocus
+            maxLength={6}
+            value={code}
+            onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="123456"
+          />
+          <button type="submit" disabled={busy || code.length !== 6}>
+            {busy ? "Verifying…" : "Verify and sign in"}
+          </button>
+          <p className="auth-note">The code expires in 10 minutes and works once.</p>
+          <button type="button" className="auth-link" onClick={() => { setStep("email"); setCode(""); setError(""); }}>
+            Use a different email
+          </button>
+        </form>
       )}
 
       {error && <p className="auth-error" role="alert">{error}</p>}
-      <p className="auth-trust">Secure email-based member access.</p>
+      <p className="auth-trust">Secure one-time-code member access.</p>
     </section>
   );
 }

@@ -79,8 +79,16 @@ export async function getCashfreeOrder(orderId) {
   return cashfreeRequest(`/orders/${encodeURIComponent(orderId)}`, { method: "GET" });
 }
 
-export function verifyCashfreeWebhook({ rawBody, signature, timestamp }) {
+export function webhookTimestampIsFresh(timestamp, now = Date.now(), windowMs = 5 * 60 * 1000) {
+  const numeric = Number(timestamp);
+  if (!Number.isFinite(numeric) || numeric <= 0) return false;
+  const timestampMs = numeric < 1_000_000_000_000 ? numeric * 1000 : numeric;
+  return Math.abs(now - timestampMs) <= windowMs;
+}
+
+export function verifyCashfreeWebhook({ rawBody, signature, timestamp, now = Date.now() }) {
   if (!cashfreeConfigured() || !rawBody || !signature || !timestamp) return false;
+  if (!webhookTimestampIsFresh(timestamp, now)) return false;
   const expected = crypto
     .createHmac("sha256", process.env.CASHFREE_CLIENT_SECRET)
     .update(`${timestamp}${rawBody}`)

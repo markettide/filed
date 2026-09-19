@@ -23,6 +23,9 @@ export async function GET(request) {
   try {
     const localOrder = await findOrderForUser(orderId, email);
     if (!localOrder) return Response.json({ error: "Payment order not found." }, { status: 404 });
+    if (localOrder.status === "REFUNDED" || localOrder.status === "DISPUTED") {
+      return Response.json({ status: localOrder.status, orderId });
+    }
 
     const cashfreeOrder = await getCashfreeOrder(orderId);
     if (validPaidOrder(cashfreeOrder)) {

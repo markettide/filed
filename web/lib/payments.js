@@ -22,16 +22,19 @@ async function collections() {
   const db = client.db(process.env.MONGODB_DB || "market_tide");
   const orders = db.collection("payment_orders");
   const users = db.collection("users");
+  const webhookEvents = db.collection("payment_webhook_events");
   if (!indexesPromise) {
     indexesPromise = Promise.all([
       orders.createIndex({ orderId: 1 }, { unique: true }),
       orders.createIndex({ cfOrderId: 1 }, { unique: true, sparse: true }),
       orders.createIndex({ email: 1, createdAt: -1 }),
+      webhookEvents.createIndex({ eventId: 1 }, { unique: true }),
+      webhookEvents.createIndex({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 }),
       users.createIndex({ email: 1 }, { unique: true }),
     ]);
   }
   await indexesPromise;
-  return { orders, users };
+  return { orders, users, webhookEvents };
 }
 
 export function newOrderId() {
@@ -111,6 +114,13 @@ export async function activatePaidOrder({ orderId, cfOrderId, cfPaymentId = null
     currency: "INR",
   });
   if (!order) throw new Error("Payment order does not match Market Tide records.");
+  if (order.status === "REFUNDED" || order.status === "DISPUTED") {
+    const subscription = await users.findOne(
+      { email: order.email },
+      { projection: { _id: 0, subscriptionPlan: 1, subscriptionStatus: 1, subscriptionEndsAt: 1 } }
+    );
+    return { order, subscription };
+  }
 
   const now = paidAt ? new Date(paidAt) : new Date();
   await orders.updateOne(
@@ -172,4 +182,153 @@ export async function markOrderAttempt({ orderId, status, cfPaymentId = null, me
       ...(cfPaymentId ? { $addToSet: { cfPaymentIds: String(cfPaymentId) } } : {}),
     }
   );
+}
+
+/** Record delivery attempts while keeping the business operation itself safe
+ * to repeat. Concurrent deliveries may both run, but activation/refund updates
+ * are idempotent and a completed event is skipped on later retries. */
+export async function beginWebhookEvent({ eventId, type, orderId }) {
+  const { webhookEvents } = await collections();
+  const existing = await webhookEvents.findOne({ eventId }, { projection: { status: 1 } });
+  if (existing?.status === "COMPLETED") return false;
+  const now = new Date();
+  await webhookEvents.updateOne(
+    { eventId },
+    {
+      $set: { type, orderId, status: "PROCESSING", updatedAt: now },
+      $setOnInsert: { eventId, createdAt: now },
+      $inc: { attempts: 1 },
+    },
+    { upsert: true }
+  );
+  return true;
+}
+
+export async function finishWebhookEvent(eventId, status = "COMPLETED", detail = null) {
+  const { webhookEvents } = await collections();
+  await webhookEvents.updateOne(
+    { eventId },
+    {
+      $set: {
+        status,
+        ...(detail ? { detail: String(detail).slice(0, 300) } : {}),
+        updatedAt: new Date(),
+      },
+    }
+  );
+}
+
+async function rebuildSubscription(email) {
+  const { orders, users } = await collections();
+  const paidOrders = await orders.find(
+    { email, status: "PAID" },
+    { projection: { _id: 0, orderId: 1, paidAt: 1 } }
+  ).sort({ paidAt: 1, createdAt: 1 }).toArray();
+
+  if (!paidOrders.length) {
+    await users.updateOne(
+      { email },
+      {
+        $set: { subscriptionStatus: "refunded", premiumOrderIds: [], updatedAt: new Date() },
+        $unset: { subscriptionStartsAt: "", subscriptionEndsAt: "", latestPaymentOrderId: "" },
+      }
+    );
+    return;
+  }
+
+  const now = new Date();
+  let startsAt = new Date(paidOrders[0].paidAt || now);
+  let endsAt = startsAt;
+  for (const order of paidOrders) {
+    const paidAt = new Date(order.paidAt || startsAt);
+    endsAt = addCalendarMonths(endsAt > paidAt ? endsAt : paidAt, PREMIUM_MONTHS);
+  }
+  await users.updateOne(
+    { email },
+    {
+      $set: {
+        subscriptionPlan: "premium",
+        subscriptionStatus: endsAt > now ? "active" : "expired",
+        subscriptionStartsAt: startsAt,
+        subscriptionEndsAt: endsAt,
+        premiumOrderIds: paidOrders.map((order) => order.orderId),
+        latestPaymentOrderId: paidOrders[paidOrders.length - 1].orderId,
+        updatedAt: now,
+      },
+    }
+  );
+}
+
+export async function recordRefund({ orderId, refundId, status, amount }) {
+  const { orders } = await collections();
+  const order = await orders.findOne({ orderId });
+  if (!order) return false;
+  const normalizedStatus = String(status || "UNKNOWN").toUpperCase();
+  const normalizedAmount = Math.max(0, Number(amount) || 0);
+  const key = String(refundId || `refund-${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, "_");
+  await orders.updateOne(
+    { orderId },
+    {
+      $set: {
+        [`refunds.${key}`]: { status: normalizedStatus, amount: normalizedAmount, updatedAt: new Date() },
+        updatedAt: new Date(),
+      },
+    }
+  );
+
+  if (normalizedStatus === "SUCCESS") {
+    const refreshed = await orders.findOne({ orderId }, { projection: { refunds: 1, amount: 1, email: 1 } });
+    const refunded = Object.values(refreshed?.refunds || {})
+      .filter((entry) => entry.status === "SUCCESS")
+      .reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
+    if (refunded >= Number(refreshed.amount || PREMIUM_PRICE)) {
+      await orders.updateOne(
+        { orderId, status: { $ne: "REFUNDED" } },
+        { $set: { status: "REFUNDED", refundedAt: new Date(), refundedAmount: refunded, updatedAt: new Date() } }
+      );
+      await rebuildSubscription(refreshed.email);
+    }
+  }
+  return true;
+}
+
+export async function recordDispute({ orderId, dispute }) {
+  const { orders } = await collections();
+  const disputeId = String(dispute?.dispute_id || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const disputeStatus = String(dispute?.dispute_status || "UNKNOWN");
+  const adverse = /_(?:MERCHANT_LOST|MERCHANT_ACCEPTED|INSUFFICIENT_EVIDENCE)$/.test(disputeStatus);
+  const merchantWon = /_MERCHANT_WON$/.test(disputeStatus);
+  const result = await orders.updateOne(
+    { orderId },
+    {
+      $set: {
+        [`disputes.${disputeId}`]: {
+          status: disputeStatus,
+          type: dispute?.dispute_type || null,
+          amount: Number(dispute?.dispute_amount) || 0,
+          reason: dispute?.reason_description || null,
+          actionOn: dispute?.dispute_action_on || null,
+          updatedAt: new Date(),
+        },
+        hasOpenDispute: !/_MERCHANT_WON$/.test(disputeStatus),
+        updatedAt: new Date(),
+      },
+    }
+  );
+  if (result.matchedCount === 1 && adverse) {
+    const order = await orders.findOneAndUpdate(
+      { orderId, status: "PAID" },
+      { $set: { status: "DISPUTED", disputedAt: new Date(), updatedAt: new Date() } },
+      { returnDocument: "after" }
+    );
+    if (order?.email) await rebuildSubscription(order.email);
+  } else if (result.matchedCount === 1 && merchantWon) {
+    const order = await orders.findOneAndUpdate(
+      { orderId, status: "DISPUTED" },
+      { $set: { status: "PAID", updatedAt: new Date() }, $unset: { disputedAt: "" } },
+      { returnDocument: "after" }
+    );
+    if (order?.email) await rebuildSubscription(order.email);
+  }
+  return result.matchedCount === 1;
 }

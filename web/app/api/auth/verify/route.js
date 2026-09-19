@@ -24,7 +24,13 @@ export async function POST(request) {
   }
 
   const id = `email:${email}`;
-  const verdict = await check(id, body.code);
+  let verdict;
+  try {
+    verdict = await check(id, body.code);
+  } catch (error) {
+    console.error("[auth] could not verify the sign-in code:", error.message || error);
+    return Response.json({ error: "We could not verify the code just now. Please try again." }, { status: 503 });
+  }
   if (!verdict.ok) {
     if (verdict.reason === "not_configured") {
       return Response.json({ error: "Email verification is not configured yet." }, { status: 503 });
