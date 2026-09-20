@@ -22,6 +22,8 @@ which is the only renderer that makes CSS look the way a browser does.
 
 import argparse
 import datetime
+import hashlib
+import hmac
 import html
 import json
 import os
@@ -37,6 +39,7 @@ OUT_DIR = os.path.join(HERE, "brief")
 # requests is a hundred wasted round trips - and urllib gave up partway through
 # with a connection reset rather than following them all.
 API = "https://www.markettide.in/api/announcements?scope=important"
+BRIEF_WORKER_PURPOSE = b"market-tide-brief-worker-v1"
 
 # The API hands back ten rows a request, so the whole window takes many. Capped
 # so a paging bug on either side cannot spin for ever; 120 pages is 1,200
@@ -126,8 +129,18 @@ def fetch(day=None, source=None, max_pages=MAX_PAGES, earliest=None):
     rows, meta, page = [], {}, 1
     while page <= max_pages:
         url = f"{API}&board=Main&page={page}"
-        req = urllib.request.Request(
-            url, headers={"User-Agent": "markettide-brief"})
+        headers = {"User-Agent": "markettide-brief"}
+        # Premium protects the browser API, but the PDF worker still needs a
+        # secure server-to-server read. Derive a purpose-specific signature
+        # from the Redis token already shared by Actions and Vercel. Never send
+        # the Redis credential itself.
+        worker_secret = (os.environ.get("KV_REST_API_TOKEN")
+                         or os.environ.get("UPSTASH_REDIS_REST_TOKEN"))
+        if worker_secret:
+            headers["X-Brief-Worker"] = hmac.new(
+                worker_secret.encode(), BRIEF_WORKER_PURPOSE, hashlib.sha256
+            ).hexdigest()
+        req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=60) as r:
             data = json.load(r)
 

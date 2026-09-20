@@ -1,5 +1,6 @@
 import { recent, configured, isImportantRow } from "../../../lib/announcements";
 import { requirePremiumAccess } from "../../../lib/entitlements";
+import { isBriefWorker } from "../../../lib/brief-worker-auth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -39,8 +40,14 @@ function inBand(row, band) {
 }
 
 export async function GET(request) {
-  const entitlement = await requirePremiumAccess(request);
-  if (entitlement instanceof Response) return entitlement;
+  // The GitHub morning-brief worker needs the same read-only data as the
+  // Premium dashboard. It authenticates with an HMAC derived from the Redis
+  // credential already shared by GitHub Actions and Vercel; the credential
+  // itself is never sent over the wire. Everyone else still needs Premium.
+  if (!isBriefWorker(request)) {
+    const entitlement = await requirePremiumAccess(request);
+    if (entitlement instanceof Response) return entitlement;
+  }
   if (!configured()) {
     return Response.json(
       { error: "Announcements storage isn't configured yet." }, { status: 503 });
