@@ -41,7 +41,8 @@ assert.equal(order.customer_details.customer_phone, "+919876543210");
 assert.equal(order.order_meta.return_url, "http://localhost:3000/payment/return?order_id={order_id}");
 
 const rawBody = JSON.stringify({ data: { order: { order_id: "mt_123" } } });
-const timestamp = "1789371000000";
+// Cashfree rejects old webhook timestamps, so keep this safeguard test current.
+const timestamp = String(Date.now());
 const signature = crypto
   .createHmac("sha256", process.env.CASHFREE_CLIENT_SECRET)
   .update(`${timestamp}${rawBody}`)

@@ -92,8 +92,11 @@ export default function AdminDashboard() {
   const [data, setData] = useState(null);
   const [query, setQuery] = useState("");
   const [paidQuery, setPaidQuery] = useState("");
+  const [trialQuery, setTrialQuery] = useState("");
+  const [trialStatus, setTrialStatus] = useState("all");
   const [memberPage, setMemberPage] = useState(1);
   const [paidPage, setPaidPage] = useState(1);
+  const [trialPage, setTrialPage] = useState(1);
   const [visitorPage, setVisitorPage] = useState(1);
   const [livePage, setLivePage] = useState(1);
   const [selectedDate, setSelectedDate] = useState(todayIndia);
@@ -106,6 +109,7 @@ export default function AdminDashboard() {
       date,
       memberPage: String(overrides.memberPage ?? memberPage),
       paidPage: String(overrides.paidPage ?? paidPage),
+      trialPage: String(overrides.trialPage ?? trialPage),
       visitorPage: String(overrides.visitorPage ?? visitorPage),
       livePage: String(overrides.livePage ?? livePage),
     });
@@ -113,6 +117,9 @@ export default function AdminDashboard() {
     if (memberQuery.trim()) params.set("memberQuery", memberQuery.trim());
     const nextPaidQuery = overrides.paidQuery ?? paidQuery;
     if (nextPaidQuery.trim()) params.set("paidQuery", nextPaidQuery.trim());
+    const nextTrialQuery = overrides.trialQuery ?? trialQuery;
+    if (nextTrialQuery.trim()) params.set("trialQuery", nextTrialQuery.trim());
+    params.set("trialStatus", overrides.trialStatus ?? trialStatus);
     const response = await fetch(`/api/admin/stats?${params}`, { cache: "no-store" });
     if (sequence !== requestSequence.current) return;
     if (response.status === 401) {
@@ -147,7 +154,7 @@ export default function AdminDashboard() {
     if (status !== "ready") return undefined;
     const timer = window.setInterval(() => load(selectedDate, true), 30000);
     return () => window.clearInterval(timer);
-  }, [status, selectedDate, memberPage, paidPage, visitorPage, livePage, query, paidQuery]);
+  }, [status, selectedDate, memberPage, paidPage, trialPage, visitorPage, livePage, query, paidQuery, trialQuery, trialStatus]);
 
   useEffect(() => {
     if (status !== "ready") return undefined;
@@ -166,6 +173,19 @@ export default function AdminDashboard() {
     }, 350);
     return () => window.clearTimeout(timer);
   }, [paidQuery]);
+
+  useEffect(() => {
+    if (status !== "ready") return undefined;
+    const timer = window.setTimeout(() => {
+      setTrialPage(1);
+      load(selectedDate, true, {
+        trialPage: 1,
+        trialQuery,
+        trialStatus,
+      });
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [trialQuery, trialStatus]);
 
   async function login(event) {
     event.preventDefault();
@@ -194,6 +214,7 @@ export default function AdminDashboard() {
 
   const shown = data?.members || [];
   const paidShown = data?.paidMembers || [];
+  const trialShown = data?.trialUsers || [];
 
   if (status !== "ready") {
     return (
@@ -236,6 +257,9 @@ export default function AdminDashboard() {
     ["Newsletter", data.totals.subscribed],
     ["Phone numbers", data.totals.withPhone],
     ["Paid members", data.totals.paid],
+    ["Trials active", data.totals.activeTrials],
+    ["Expired · unpaid", data.totals.expiredUnpaidTrials],
+    ["Trial conversions", data.totals.convertedTrials],
     ["Unverified", data.totals.members - data.totals.verified],
     ["Reading now", data.traffic.live],
     ["Unique visitors", data.traffic.unique],
@@ -406,6 +430,75 @@ export default function AdminDashboard() {
             <div key={source}><span>{source}</span><b>{number(count)}</b></div>
           ))}
         </div>
+      </section>
+
+      <section className="admin-panel">
+        <div className="admin-panel-head admin-members-head">
+          <div>
+            <p className="admin-kicker">Trial follow-up</p>
+            <h2>Seven-day free trials</h2>
+          </div>
+          <div className="admin-filter-controls">
+            <select
+              aria-label="Filter trials by status"
+              value={trialStatus}
+              onChange={(event) => setTrialStatus(event.target.value)}
+            >
+              <option value="all">All trial users</option>
+              <option value="active">Active trials</option>
+              <option value="expired-unpaid">Expired · did not buy</option>
+              <option value="converted">Converted to paid</option>
+            </select>
+            <input
+              type="search"
+              placeholder="Search trial email or phone…"
+              value={trialQuery}
+              onChange={(event) => setTrialQuery(event.target.value)}
+            />
+          </div>
+        </div>
+        <p className="admin-engagement-summary">
+          Use “Expired · did not buy” to find members who completed the trial without purchasing Premium.
+        </p>
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr><th>Member</th><th>Phone</th><th>Trial started</th><th>Trial ends</th><th>Time remaining</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {trialShown.map((member) => (
+                <tr key={member.email} className={member.targetable ? "admin-target-row" : undefined}>
+                  <td><b>{member.email}</b></td>
+                  <td>{member.phone || "—"}</td>
+                  <td>{when(member.startedAt)}</td>
+                  <td>{when(member.endsAt)}</td>
+                  <td>
+                    {member.status === "active"
+                      ? `${member.daysLeft} ${member.daysLeft === 1 ? "day" : "days"} left`
+                      : member.status === "expired-unpaid"
+                        ? `Ended ${member.daysSinceEnd} ${member.daysSinceEnd === 1 ? "day" : "days"} ago`
+                        : "Paid plan active/history"}
+                  </td>
+                  <td>
+                    <div className="admin-tags">
+                      <span className={`admin-trial-${member.status}`}>
+                        {member.status === "active" ? "Trial active" : member.status === "converted" ? "Converted" : "Follow up"}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!trialShown.length && <p className="admin-empty">No trial users match this filter.</p>}
+        </div>
+        <Pager
+          pagination={data.trialPagination}
+          onPage={(page) => {
+            setTrialPage(page);
+            load(selectedDate, true, { trialPage: page });
+          }}
+        />
       </section>
 
       <section className="admin-panel">

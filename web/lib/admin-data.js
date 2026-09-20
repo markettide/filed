@@ -2,6 +2,7 @@ import { listEmails } from "./store";
 import { listUsersForAdmin } from "./users";
 import { listPaidOrdersForAdmin } from "./payments";
 import { dailyEngagement, engagementTrend, liveEngagement } from "./engagement";
+import { trialSummary } from "./admin-trials";
 
 const NEWSLETTER_SOURCES = new Set(["brief", "landing", "newsletter", "legacy-waitlist"]);
 const ADMIN_PAGE_SIZE = 10;
@@ -200,6 +201,27 @@ export async function adminData(selectedDate, trendDays = 30, options = {}) {
       )
     : paidMembers;
   const paidResult = paginate(matchingPaidMembers, options.paidPage, options.all);
+  const trialUsers = mongoRows
+    .map((user) => {
+      const trial = trialSummary(user, now);
+      if (!trial) return null;
+      return {
+        email: String(user.email || "").trim().toLowerCase(),
+        phone: user.phone || null,
+        ...trial,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => String(b.startedAt).localeCompare(String(a.startedAt)));
+  const trialNeedle = String(options.trialQuery || "").trim().toLowerCase();
+  const requestedTrialStatus = String(options.trialStatus || "all").trim().toLowerCase();
+  const matchingTrialUsers = trialUsers.filter((member) => {
+    const matchesStatus = requestedTrialStatus === "all" || member.status === requestedTrialStatus;
+    const matchesQuery = !trialNeedle || [member.email, member.phone]
+      .filter(Boolean).join(" ").toLowerCase().includes(trialNeedle);
+    return matchesStatus && matchesQuery;
+  });
+  const trialResult = paginate(matchingTrialUsers, options.trialPage, options.all);
   const visitorResult = paginate(engagementVisitors, options.visitorPage, options.all);
   const liveResult = paginate(identifiedLiveReaders, options.livePage, options.all);
 
@@ -212,6 +234,9 @@ export async function adminData(selectedDate, trendDays = 30, options = {}) {
       subscribed: rows.filter((row) => row.subscribed).length,
       withPhone: rows.filter((row) => row.phone).length,
       paid: paidMembers.length,
+      activeTrials: trialUsers.filter((member) => member.status === "active").length,
+      expiredUnpaidTrials: trialUsers.filter((member) => member.status === "expired-unpaid").length,
+      convertedTrials: trialUsers.filter((member) => member.status === "converted").length,
     },
     sourceCounts,
     engagement: {
@@ -226,5 +251,7 @@ export async function adminData(selectedDate, trendDays = 30, options = {}) {
     memberPagination: memberResult.pagination,
     paidMembers: paidResult.items,
     paidPagination: paidResult.pagination,
+    trialUsers: trialResult.items,
+    trialPagination: trialResult.pagination,
   };
 }

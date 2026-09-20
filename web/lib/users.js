@@ -247,6 +247,8 @@ export async function listUsersForAdmin(limit = 5000) {
         kitSyncStatus: 1,
         kitSyncAttemptedAt: 1,
         kitSyncedAt: 1,
+        trialStartedAt: 1,
+        trialEndsAt: 1,
         subscriptionPlan: 1,
         subscriptionStatus: 1,
         subscriptionStartsAt: 1,

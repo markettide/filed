@@ -23,6 +23,9 @@ export async function GET(request) {
         memberQuery: request.nextUrl.searchParams.get("memberQuery"),
         paidPage: request.nextUrl.searchParams.get("paidPage"),
         paidQuery: request.nextUrl.searchParams.get("paidQuery"),
+        trialPage: request.nextUrl.searchParams.get("trialPage"),
+        trialQuery: request.nextUrl.searchParams.get("trialQuery"),
+        trialStatus: request.nextUrl.searchParams.get("trialStatus"),
         visitorPage: request.nextUrl.searchParams.get("visitorPage"),
         livePage: request.nextUrl.searchParams.get("livePage"),
       }

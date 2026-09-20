@@ -90,6 +90,9 @@ export async function GET(request) {
       ["Newsletter subscribers", data.totals.subscribed],
       ["Members with phone", data.totals.withPhone],
       ["Active paid members", data.totals.paid],
+      ["Active free trials", data.totals.activeTrials],
+      ["Expired trials without purchase", data.totals.expiredUnpaidTrials],
+      ["Trials converted to paid", data.totals.convertedTrials],
       ["Reading now", data.liveReaders.length],
       ["Visitors on selected date", data.engagement.totals.visitors],
       ["Sessions on selected date", data.engagement.totals.sessions],
@@ -101,8 +104,8 @@ export async function GET(request) {
     metrics.forEach((row) => overview.addRow(row));
     styleTable(overview, 5, overview.rowCount, 2);
     overview.getCell("B6").numFmt = "@";
-    for (let row = 7; row <= 15; row += 1) overview.getCell(row, 2).numFmt = "#,##0";
-    for (let row = 16; row <= 17; row += 1) overview.getCell(row, 2).numFmt = "#,##0.0";
+    for (let row = 7; row <= 18; row += 1) overview.getCell(row, 2).numFmt = "#,##0";
+    for (let row = 19; row <= 20; row += 1) overview.getCell(row, 2).numFmt = "#,##0.0";
     overview.getCell("D5").value = "Acquisition source";
     overview.getCell("E5").value = "Members";
     Object.entries(data.sourceCounts).sort((a, b) => b[1] - a[1]).forEach(([source, count], index) => {
@@ -192,6 +195,21 @@ export async function GET(request) {
     paidMembers.getColumn(2).numFmt = "@";
     paidMembers.getColumn(3).numFmt = "₹#,##0.00";
     for (const column of [5, 7, 8]) paidMembers.getColumn(column).numFmt = "dd-mmm-yyyy hh:mm";
+
+    const trialUsers = workbook.addWorksheet("Free Trials", { properties: { tabColor: { argb: "F59E0B" } } });
+    title(trialUsers, "Seven-day free trials", "Expired without purchase identifies the members available for targeted follow-up.");
+    addRows(trialUsers,
+      ["Email", "Phone", "Trial started", "Trial ends", "Days left", "Days since end", "Status", "Target for follow-up"],
+      data.trialUsers.map((member) => [
+        member.email, phoneText(member.phone), asDate(member.startedAt), asDate(member.endsAt),
+        member.daysLeft, member.daysSinceEnd,
+        member.status === "expired-unpaid" ? "Expired without purchase" : member.status === "converted" ? "Converted to paid" : "Active trial",
+        member.targetable ? "Yes" : "No",
+      ]),
+      [36, 19, 22, 22, 13, 18, 26, 22]
+    );
+    trialUsers.getColumn(2).numFmt = "@";
+    trialUsers.getColumn(3).numFmt = trialUsers.getColumn(4).numFmt = "dd-mmm-yyyy hh:mm";
 
     const members = workbook.addWorksheet("Members");
     title(members, "All members", "Email, phone, source and account status from the Market Tide member database.");

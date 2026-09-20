@@ -36,7 +36,8 @@
 .admin-login form { display: grid; gap: 10px; }
 .admin-login label { color: var(--muted); font-size: 12px; font-weight: 680; }
 .admin-login input,
-.admin-members-head input {
+.admin-members-head input,
+.admin-members-head select {
   width: 100%;
   color: var(--ink);
   background: var(--panel-2);
@@ -46,7 +47,8 @@
 }
 .admin-login input { padding: 13px 14px; }
 .admin-login input:focus,
-.admin-members-head input:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,156,255,.16); }
+.admin-members-head input:focus,
+.admin-members-head select:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,156,255,.16); }
 .admin-login button {
   width: 100%;
   margin-top: 4px;
@@ -87,7 +89,13 @@
 .admin-sources > div { min-width: 135px; flex: 1 1 150px; display: flex; justify-content: space-between; gap: 15px; padding: 12px 13px; background: var(--panel-2); border-radius: 10px; }
 .admin-sources span { color: var(--muted); font-size: 12px; }
 .admin-sources b { font-size: 14px; }
-.admin-members-head input { max-width: 330px; padding: 10px 12px; font-size: 13px; }
+.admin-members-head input,
+.admin-members-head select { max-width: 330px; padding: 10px 12px; font-size: 13px; }
+.admin-filter-controls { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.admin-filter-controls select { color: var(--ink); background: var(--panel-2); }
+.admin-target-row { background: rgba(245, 158, 11, .055); }
+.admin-tags .admin-trial-expired-unpaid { color: #f59e0b; background: rgba(245, 158, 11, .12); }
+.admin-tags .admin-trial-converted { color: #17b26a; background: rgba(23, 178, 106, .12); }
 .admin-engagement-head { align-items: center; }
 .admin-date { display: grid; gap: 5px; color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
 .admin-date input { padding: 9px 11px; color: var(--ink); background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; font: inherit; color-scheme: dark; }
@@ -140,7 +148,8 @@
   .admin-top-actions button { flex: 1; }
   .admin-top-actions { flex-wrap: wrap; }
   .admin-export { justify-content: center; width: 100%; }
-  .admin-members-head input { max-width: none; }
+  .admin-members-head input, .admin-members-head select { max-width: none; width: 100%; }
+  .admin-filter-controls { width: 100%; }
   .admin-cards { gap: 8px; }
   .admin-cards article { min-height: 94px; padding: 14px; }
   .admin-cards b { font-size: 24px; }
