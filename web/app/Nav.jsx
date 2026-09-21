@@ -28,6 +28,15 @@ export default function Nav() {
     );
   }
 
+  const trialDaysLeft = user?.access?.trialActive && user.access.trialEndsAt
+    ? Math.max(1, Math.ceil((new Date(user.access.trialEndsAt) - new Date()) / 86400000))
+    : 0;
+  const planLabel = user?.access?.trialAvailable
+    ? "Start free trial"
+    : trialDaysLeft
+      ? `Trial · ${trialDaysLeft}d left`
+      : "Plans";
+
   return (
     <nav className="nav">
       <div className="nav-in">
@@ -67,7 +76,7 @@ export default function Nav() {
             </button>
           ) : null}
           <a className="nav-cta" href="/pricing" aria-current={current("/pricing") ? "page" : undefined}>
-            Plans
+            {planLabel}
           </a>
         </div>
       </div>

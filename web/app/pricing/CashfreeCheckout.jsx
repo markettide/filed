@@ -62,11 +62,20 @@ export default function CashfreeCheckout() {
     }
     setBusy(true);
     setNotice(null);
+    fetch("/api/trial/funnel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event: "cta_click", path: "/pricing" }),
+      keepalive: true,
+    }).catch(() => {});
     try {
       const response = await fetch("/api/trial/start", { method: "POST" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not start your trial.");
       setAccess(data.access);
+      window.dispatchEvent(new CustomEvent("market-tide-auth", {
+        detail: { signedIn: true, user: { ...user, plan: data.access.level, access: data.access } },
+      }));
       setNotice({ type: "success", text: "Your seven-day Premium trial is active. No card was charged." });
     } catch (error) {
       setNotice({ type: "error", text: error.message || "Could not start your trial." });

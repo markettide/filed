@@ -260,6 +260,8 @@ export default function AdminDashboard() {
     ["Trials active", data.totals.activeTrials],
     ["Expired · unpaid", data.totals.expiredUnpaidTrials],
     ["Trial conversions", data.totals.convertedTrials],
+    ["Reached trial gate", data.totals.trialGateUsers],
+    ["Clicked trial CTA", data.totals.trialCtaUsers],
     ["Unverified", data.totals.members - data.totals.verified],
     ["Reading now", data.traffic.live],
     ["Unique visitors", data.traffic.unique],
@@ -445,6 +447,7 @@ export default function AdminDashboard() {
               onChange={(event) => setTrialStatus(event.target.value)}
             >
               <option value="all">All trial users</option>
+              <option value="not-started">Interested · not started</option>
               <option value="active">Active trials</option>
               <option value="expired-unpaid">Expired · did not buy</option>
               <option value="converted">Converted to paid</option>
@@ -463,7 +466,7 @@ export default function AdminDashboard() {
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
-              <tr><th>Member</th><th>Phone</th><th>Trial started</th><th>Trial ends</th><th>Time remaining</th><th>Status</th></tr>
+              <tr><th>Member</th><th>Phone</th><th>Trial started</th><th>Trial ends</th><th>Time remaining</th><th>Interest</th><th>Status</th></tr>
             </thead>
             <tbody>
               {trialShown.map((member) => (
@@ -473,16 +476,25 @@ export default function AdminDashboard() {
                   <td>{when(member.startedAt)}</td>
                   <td>{when(member.endsAt)}</td>
                   <td>
-                    {member.status === "active"
+                    {member.status === "not-started"
+                      ? "Trial not started"
+                      : member.status === "active"
                       ? `${member.daysLeft} ${member.daysLeft === 1 ? "day" : "days"} left`
                       : member.status === "expired-unpaid"
                         ? `Ended ${member.daysSinceEnd} ${member.daysSinceEnd === 1 ? "day" : "days"} ago`
                         : "Paid plan active/history"}
                   </td>
                   <td>
+                    <div className="admin-session-times">
+                      <span>{number(member.gateViews)} gate views</span>
+                      <span>{number(member.ctaClicks)} CTA clicks</span>
+                      {member.lastInterestPath && <span>{member.lastInterestPath}</span>}
+                    </div>
+                  </td>
+                  <td>
                     <div className="admin-tags">
                       <span className={`admin-trial-${member.status}`}>
-                        {member.status === "active" ? "Trial active" : member.status === "converted" ? "Converted" : "Follow up"}
+                        {member.status === "not-started" ? "Invite to trial" : member.status === "active" ? "Trial active" : member.status === "converted" ? "Converted" : "Follow up"}
                       </span>
                     </div>
                   </td>

@@ -95,6 +95,7 @@
 .admin-filter-controls select { color: var(--ink); background: var(--panel-2); }
 .admin-target-row { background: rgba(245, 158, 11, .055); }
 .admin-tags .admin-trial-expired-unpaid { color: #f59e0b; background: rgba(245, 158, 11, .12); }
+.admin-tags .admin-trial-not-started { color: #f59e0b; background: rgba(245, 158, 11, .12); }
 .admin-tags .admin-trial-converted { color: #17b26a; background: rgba(23, 178, 106, .12); }
 .admin-engagement-head { align-items: center; }
 .admin-date { display: grid; gap: 5px; color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }

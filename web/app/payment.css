@@ -35,6 +35,9 @@
 .premium-gate-card h1 { margin: 6px 0 13px; font-size: clamp(29px, 5vw, 44px); letter-spacing: -.04em; }
 .premium-gate-card > p:not(.mk-kicker) { max-width: 54ch; margin: 0 auto 25px; color: var(--muted); line-height: 1.6; }
 .premium-gate-card .btn-lg { display: flex; width: min(100%, 340px); margin: 0 auto; justify-content: center; }
+.premium-gate-benefits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 auto 22px; }
+.premium-gate-benefits span { padding: 10px 8px; color: var(--ink); background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; font-size: 12px; font-weight: 650; }
+.premium-gate-card .premium-gate-assurance { margin: 12px auto 0 !important; color: var(--positive, #159455) !important; font-size: 12px; font-weight: 650; }
 .premium-gate-mark { display: grid; place-items: center; width: 58px; height: 58px; margin: 0 auto 20px; border-radius: 16px; background: linear-gradient(135deg, var(--grad-1), var(--grad-2)); color: white; font-weight: 800; }
 .premium-gate-free { display: inline-block; margin-top: 18px; color: var(--muted); font-size: 13px; text-decoration: none; }
 .premium-gate-free:hover { color: var(--accent); }
@@ -43,4 +46,5 @@
 @media (max-width: 560px) {
   .premium-gate-shell { padding-top: 34px; padding-bottom: 40px; }
   .premium-gate-card { padding: 34px 20px; border-radius: 16px; }
+  .premium-gate-benefits { grid-template-columns: 1fr; }
 }

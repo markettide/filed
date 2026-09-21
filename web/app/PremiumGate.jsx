@@ -1,15 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import Nav from "./Nav";
 import MkFooter from "./MkFooter";
 import { useSiteAuth } from "./SiteAuth";
 
 export default function PremiumGate({ children }) {
   const { checking: authChecking, ready, user, openAuth } = useSiteAuth();
+  const pathname = usePathname();
   const [access, setAccess] = useState(null);
   const [error, setError] = useState("");
+  const [startingTrial, setStartingTrial] = useState(false);
   const authPrompted = useRef(false);
+  const gateTracked = useRef(false);
 
   const loadAccess = useCallback(async () => {
     if (!user) {
@@ -35,6 +39,43 @@ export default function PremiumGate({ children }) {
     openAuth({ clear: true });
   }, [authChecking, openAuth, ready, user]);
 
+  useEffect(() => { gateTracked.current = false; }, [pathname]);
+
+  useEffect(() => {
+    if (!user || !access?.trialAvailable || gateTracked.current) return;
+    gateTracked.current = true;
+    fetch("/api/trial/funnel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event: "gate_view", path: pathname }),
+      keepalive: true,
+    }).catch(() => {});
+  }, [access, pathname, user]);
+
+  async function startTrial() {
+    setStartingTrial(true);
+    setError("");
+    fetch("/api/trial/funnel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event: "cta_click", path: pathname }),
+      keepalive: true,
+    }).catch(() => {});
+    try {
+      const response = await fetch("/api/trial/start", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not start your trial.");
+      setAccess(data.access);
+      window.dispatchEvent(new CustomEvent("market-tide-auth", {
+        detail: { signedIn: true, user: { ...user, plan: data.access.level, access: data.access } },
+      }));
+    } catch (startError) {
+      setError(startError.message || "Could not start your trial. Please try again.");
+    } finally {
+      setStartingTrial(false);
+    }
+  }
+
   if (user && access?.premium) return children;
 
   const loading = authChecking || (user && !access && !error);
@@ -57,9 +98,17 @@ export default function PremiumGate({ children }) {
             </>
           ) : access?.trialAvailable ? (
             <>
-              <h1>Start your free trial to open this page</h1>
-              <p>You are signed in, but Premium access has not started. Visit Plans to activate your free seven-day trial. No card is required.</p>
-              <a className="btn-lg btn-grad" href="/pricing">Go to Plans and start trial</a>
+              <h1>Unlock this page free for seven days</h1>
+              <p>Explore the complete Market Tide research workspace now. Your trial starts with one click and opens the page you requested immediately.</p>
+              <div className="premium-gate-benefits" aria-label="Trial benefits">
+                <span>Full announcement dashboard</span>
+                <span>Insider trading tracker</span>
+                <span>Bulk and block deals</span>
+              </div>
+              <button className="btn-lg btn-grad" type="button" disabled={startingTrial} onClick={startTrial}>
+                {startingTrial ? "Starting your trial…" : "Start my free 7-day trial"}
+              </button>
+              <p className="premium-gate-assurance">No card required · No automatic charge · Cancel nothing</p>
               <a className="premium-gate-free" href="/brief">Continue to the free newsletter</a>
             </>
           ) : (

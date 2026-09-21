@@ -204,15 +204,28 @@ export async function adminData(selectedDate, trendDays = 30, options = {}) {
   const trialUsers = mongoRows
     .map((user) => {
       const trial = trialSummary(user, now);
-      if (!trial) return null;
+      const gateViews = Math.max(0, Number(user.trialGateViews || 0));
+      const ctaClicks = Math.max(0, Number(user.trialCtaClicks || 0));
+      if (!trial && !gateViews && !ctaClicks) return null;
       return {
         email: String(user.email || "").trim().toLowerCase(),
         phone: user.phone || null,
-        ...trial,
+        gateViews,
+        ctaClicks,
+        lastInterestAt: iso(user.trialLastCtaAt || user.trialLastGateAt),
+        lastInterestPath: user.trialLastInterestPath || null,
+        ...(trial || {
+          startedAt: null,
+          endsAt: null,
+          daysLeft: null,
+          daysSinceEnd: null,
+          status: "not-started",
+          targetable: true,
+        }),
       };
     })
     .filter(Boolean)
-    .sort((a, b) => String(b.startedAt).localeCompare(String(a.startedAt)));
+    .sort((a, b) => String(b.lastInterestAt || b.startedAt || "").localeCompare(String(a.lastInterestAt || a.startedAt || "")));
   const trialNeedle = String(options.trialQuery || "").trim().toLowerCase();
   const requestedTrialStatus = String(options.trialStatus || "all").trim().toLowerCase();
   const matchingTrialUsers = trialUsers.filter((member) => {
@@ -237,6 +250,8 @@ export async function adminData(selectedDate, trendDays = 30, options = {}) {
       activeTrials: trialUsers.filter((member) => member.status === "active").length,
       expiredUnpaidTrials: trialUsers.filter((member) => member.status === "expired-unpaid").length,
       convertedTrials: trialUsers.filter((member) => member.status === "converted").length,
+      trialGateUsers: mongoRows.filter((user) => Number(user.trialGateViews || 0) > 0).length,
+      trialCtaUsers: mongoRows.filter((user) => Number(user.trialCtaClicks || 0) > 0).length,
     },
     sourceCounts,
     engagement: {

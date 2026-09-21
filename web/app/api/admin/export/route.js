@@ -93,6 +93,8 @@ export async function GET(request) {
       ["Active free trials", data.totals.activeTrials],
       ["Expired trials without purchase", data.totals.expiredUnpaidTrials],
       ["Trials converted to paid", data.totals.convertedTrials],
+      ["Members who reached a trial gate", data.totals.trialGateUsers],
+      ["Members who clicked a trial CTA", data.totals.trialCtaUsers],
       ["Reading now", data.liveReaders.length],
       ["Visitors on selected date", data.engagement.totals.visitors],
       ["Sessions on selected date", data.engagement.totals.sessions],
@@ -104,8 +106,8 @@ export async function GET(request) {
     metrics.forEach((row) => overview.addRow(row));
     styleTable(overview, 5, overview.rowCount, 2);
     overview.getCell("B6").numFmt = "@";
-    for (let row = 7; row <= 18; row += 1) overview.getCell(row, 2).numFmt = "#,##0";
-    for (let row = 19; row <= 20; row += 1) overview.getCell(row, 2).numFmt = "#,##0.0";
+    for (let row = 7; row <= 20; row += 1) overview.getCell(row, 2).numFmt = "#,##0";
+    for (let row = 21; row <= 22; row += 1) overview.getCell(row, 2).numFmt = "#,##0.0";
     overview.getCell("D5").value = "Acquisition source";
     overview.getCell("E5").value = "Members";
     Object.entries(data.sourceCounts).sort((a, b) => b[1] - a[1]).forEach(([source, count], index) => {
@@ -199,17 +201,19 @@ export async function GET(request) {
     const trialUsers = workbook.addWorksheet("Free Trials", { properties: { tabColor: { argb: "F59E0B" } } });
     title(trialUsers, "Seven-day free trials", "Expired without purchase identifies the members available for targeted follow-up.");
     addRows(trialUsers,
-      ["Email", "Phone", "Trial started", "Trial ends", "Days left", "Days since end", "Status", "Target for follow-up"],
+      ["Email", "Phone", "Trial started", "Trial ends", "Days left", "Days since end", "Gate views", "CTA clicks", "Last interest page", "Last interest", "Status", "Target for follow-up"],
       data.trialUsers.map((member) => [
         member.email, phoneText(member.phone), asDate(member.startedAt), asDate(member.endsAt),
-        member.daysLeft, member.daysSinceEnd,
-        member.status === "expired-unpaid" ? "Expired without purchase" : member.status === "converted" ? "Converted to paid" : "Active trial",
+        member.daysLeft, member.daysSinceEnd, member.gateViews, member.ctaClicks,
+        member.lastInterestPath, asDate(member.lastInterestAt),
+        member.status === "not-started" ? "Interested, trial not started" : member.status === "expired-unpaid" ? "Expired without purchase" : member.status === "converted" ? "Converted to paid" : "Active trial",
         member.targetable ? "Yes" : "No",
       ]),
-      [36, 19, 22, 22, 13, 18, 26, 22]
+      [36, 19, 22, 22, 13, 18, 13, 13, 22, 22, 26, 22]
     );
     trialUsers.getColumn(2).numFmt = "@";
     trialUsers.getColumn(3).numFmt = trialUsers.getColumn(4).numFmt = "dd-mmm-yyyy hh:mm";
+    trialUsers.getColumn(10).numFmt = "dd-mmm-yyyy hh:mm";
 
     const members = workbook.addWorksheet("Members");
     title(members, "All members", "Email, phone, source and account status from the Market Tide member database.");

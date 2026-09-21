@@ -85,6 +85,21 @@ export async function startPremiumTrial(email, days = 7) {
   return { started: result.modifiedCount === 1, profile };
 }
 
+/** Record first-party trial interest for the private admin funnel. */
+export async function recordTrialFunnel(email, event, path) {
+  const users = await collection();
+  const now = new Date();
+  const field = event === "cta_click" ? "trialCtaClicks" : "trialGateViews";
+  const atField = event === "cta_click" ? "trialLastCtaAt" : "trialLastGateAt";
+  await users.updateOne(
+    { email: String(email || "").trim().toLowerCase() },
+    {
+      $inc: { [field]: 1 },
+      $set: { [atField]: now, trialLastInterestPath: String(path || "").slice(0, 80) },
+    }
+  );
+}
+
 /** Update the small set of identity fields a reader is allowed to manage. */
 export async function updateUserProfile({ email, name, phone }) {
   const users = await collection();
@@ -249,6 +264,11 @@ export async function listUsersForAdmin(limit = 5000) {
         kitSyncedAt: 1,
         trialStartedAt: 1,
         trialEndsAt: 1,
+        trialGateViews: 1,
+        trialCtaClicks: 1,
+        trialLastGateAt: 1,
+        trialLastCtaAt: 1,
+        trialLastInterestPath: 1,
         subscriptionPlan: 1,
         subscriptionStatus: 1,
         subscriptionStartsAt: 1,

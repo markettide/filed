@@ -44,6 +44,18 @@ export function SiteAuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    if (!user || user.access) return undefined;
+    let active = true;
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data) => {
+        if (active && data.user) setUser(data.user);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [user]);
+
+  useEffect(() => {
     if (checking || user || !ready || !AUTO_OPEN_PATHS.has(pathname)) return;
     if (autoShown.current.has(pathname)) return;
     autoShown.current.add(pathname);
