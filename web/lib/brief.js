@@ -50,11 +50,11 @@ async function loadBriefPdf(day) {
   const parts = Number(await redis(["GET", `mt:brief:${day}:parts`]) || 0);
   if (!parts) return null;
 
-  const chunks = await Promise.all(
-    Array.from({ length: parts }, (_, i) =>
-      redis(["GET", `mt:brief:${day}:${i}`])
-    )
-  );
+  const chunks = (await redis([
+    "MGET",
+    ...Array.from({ length: parts }, (_, i) => `mt:brief:${day}:${i}`),
+  ])) || [];
+  if (chunks.length !== parts) return null;
   if (chunks.some((c) => c == null)) return null;      // a part expired
 
   return Buffer.from(chunks.join(""), "base64");

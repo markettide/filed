@@ -1,7 +1,7 @@
 import { listEmails } from "./store";
 import { listUsersForAdmin } from "./users";
 import { listPaidOrdersForAdmin } from "./payments";
-import { dailyEngagement, engagementTrend, liveEngagement } from "./engagement";
+import { dailyEngagement, engagementTrend, liveEngagement, trafficTotals } from "./engagement";
 import { trialSummary } from "./admin-trials";
 
 const NEWSLETTER_SOURCES = new Set(["brief", "landing", "newsletter", "legacy-waitlist"]);
@@ -55,36 +55,12 @@ function sourceLabel(source) {
   return source;
 }
 
-async function traffic() {
-  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return { total: 0, unique: 0, live: 0 };
-  const now = Math.floor(Date.now() / 1000);
-  try {
-    const response = await fetch(`${url}/pipeline`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify([
-        ["GET", "mt:visits:total"],
-        ["PFCOUNT", "mt:visits:uniq"],
-        ["ZCOUNT", "mt:visits:live", now - 300, "+inf"],
-      ]),
-      cache: "no-store",
-    });
-    const result = await response.json();
-    const values = Array.isArray(result) ? result.map((item) => item.result) : [];
-    return { total: Number(values[0] || 0), unique: Number(values[1] || 0), live: Number(values[2] || 0) };
-  } catch {
-    return { total: 0, unique: 0, live: 0 };
-  }
-}
-
 export async function adminData(selectedDate, trendDays = 30, options = {}) {
   const [mongoRows, paidOrders, waitlistRows, visitTotals, engagement, liveReaders, trend] = await Promise.all([
     listUsersForAdmin(),
     listPaidOrdersForAdmin(),
     listEmails(),
-    traffic(),
+    trafficTotals(),
     dailyEngagement(selectedDate),
     liveEngagement(),
     engagementTrend(trendDays),

@@ -47,31 +47,39 @@ function parse(raw) {
   }
 }
 
-/** One day's deals, reassembled from however many parts it was split into. */
-async function readDay(day) {
-  const parts = Number((await redis(["GET", `mt:deals:${day}:parts`])) || 0);
-  if (!parts) {
-    return parse(await redis(["GET", `mt:deals:${day}`])) || [];
-  }
-  const chunks = await Promise.all(
-    Array.from({ length: parts }, (_, i) =>
-      redis(["GET", `mt:deals:${day}:${i}`])
-    )
-  );
-  return chunks.flatMap((c) => parse(c) || []);
-}
-
 /**
  * The last `days` days of deals, newest day first, each row carrying the day
  * it belongs to.
  */
 async function loadBulkBlockDeals({ days = DAYS } = {}) {
-  const index = parse(await redis(["GET", "mt:deals:index"])) || [];
-  const meta = parse(await redis(["GET", "mt:deals:meta"]));
+  const [indexRaw, metaRaw] = (await redis([
+    "MGET", "mt:deals:index", "mt:deals:meta",
+  ])) || [];
+  const index = parse(indexRaw) || [];
+  const meta = parse(metaRaw);
   const wanted = index.slice(0, days);
   if (!wanted.length) return { days: [], deals: [], meta };
 
-  const perDay = await Promise.all(wanted.map(readDay));
+  const partCounts = (await redis([
+    "MGET",
+    ...wanted.map((day) => `mt:deals:${day}:parts`),
+  ])) || [];
+  const layouts = [];
+  const dataKeys = [];
+  wanted.forEach((day, indexPosition) => {
+    const parts = Number(partCounts[indexPosition] || 0);
+    const keys = parts > 0
+      ? Array.from({ length: parts }, (_, part) => `mt:deals:${day}:${part}`)
+      : [`mt:deals:${day}`];
+    layouts.push({ offset: dataKeys.length, count: keys.length });
+    dataKeys.push(...keys);
+  });
+  const data = dataKeys.length
+    ? ((await redis(["MGET", ...dataKeys])) || [])
+    : [];
+  const perDay = layouts.map(({ offset, count }) =>
+    data.slice(offset, offset + count).flatMap((raw) => parse(raw) || [])
+  );
   const out = [];
   perDay.forEach((rows, i) => {
     for (const r of rows) out.push({ ...r, day: r.day || wanted[i] });
