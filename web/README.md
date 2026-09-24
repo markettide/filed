@@ -33,7 +33,7 @@ private environment variables in Vercel for Production, Preview and Development:
 - `REPLY_TO_EMAIL` — reply destination; defaults to `market.tide27@gmail.com`
 - `KIT_API_KEY` — Kit V4 API key used to add each explicit newsletter signup to the Kit audience
 - `KIT_FROM_EMAIL` — verified Kit sender address; defaults to `brief@markettide.in`
-- `KV_REST_API_URL` and `KV_REST_API_TOKEN` — Upstash Redis used for short-lived OTPs
+- `KV_REST_API_URL` and `KV_REST_API_TOKEN` — Upstash Redis used for market data and briefs
 - `CRON_SECRET` — random value of at least 16 characters; Vercel sends it to the cron route
 - `GITHUB_DISPATCH_TOKEN` — GitHub token with Actions write access, used only to start the PDF worker
 - `ADMIN_PATH_TOKEN` — long random token used in the private `/control/<token>` URL

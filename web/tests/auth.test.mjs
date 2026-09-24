@@ -8,72 +8,64 @@
  *
  *   node web/tests/auth.test.mjs
  *
- * Redis is replaced by an in-memory stand-in through global.fetch, so this
- * needs no network, no credentials and no cleanup.
+ * MongoDB OTP storage is replaced by an in-memory stand-in, so this needs no
+ * network, credentials or cleanup.
  */
 
 import crypto from "node:crypto";
 
 process.env.NODE_ENV = "production";
 process.env.AUTH_SECRET = "test-secret-not-a-real-one";
-process.env.KV_REST_API_URL = "https://redis.invalid";
-process.env.KV_REST_API_TOKEN = "test-token";
+process.env.MONGODB_URI = "mongodb://unused.invalid/test";
 
-// ------------------------------------------------------------ fake redis
+// ------------------------------------------------------------ fake OTP store
 
-const store = new Map();          // key -> { value, expiresAt }
-
-function alive(key) {
-  const row = store.get(key);
-  if (!row) return null;
-  if (row.expiresAt && row.expiresAt < Date.now()) {
-    store.delete(key);
-    return null;
-  }
-  return row;
-}
-
-function run(cmd) {
-  const [op, key, ...rest] = cmd;
-  switch (op) {
-    case "SET": {
-      const value = rest[0];
-      const ex = rest[1] === "EX" ? Number(rest[2]) : null;
-      store.set(key, { value, expiresAt: ex ? Date.now() + ex * 1000 : null });
-      return "OK";
+const codes = new Map();
+const limits = new Map();
+const store = {
+  clear() {
+    codes.clear();
+    limits.clear();
+  },
+  async consumeSendSlot(identifier, now) {
+    let row = limits.get(identifier);
+    if (row && row.expiresAt <= now) {
+      limits.delete(identifier);
+      row = null;
     }
-    case "GET":
-      return alive(key)?.value ?? null;
-    case "DEL":
-      return store.delete(key) ? 1 : 0;
-    case "INCR": {
-      const row = alive(key);
-      const next = String(Number(row?.value || 0) + 1);
-      store.set(key, { value: next, expiresAt: row?.expiresAt ?? null });
-      return Number(next);
+    if (row?.count >= 3) {
+      return {
+        allowed: false,
+        retryInSeconds: Math.ceil((row.expiresAt.getTime() - now.getTime()) / 1000),
+      };
     }
-    case "EXPIRE": {
-      const row = alive(key);
-      if (!row) return 0;
-      row.expiresAt = Date.now() + Number(rest[0]) * 1000;
-      return 1;
+    if (row) row.count += 1;
+    else limits.set(identifier, { count: 1, expiresAt: new Date(now.getTime() + 15 * 60 * 1000) });
+    return { allowed: true, retryInSeconds: 15 * 60 };
+  },
+  async saveCode(identifier, record) {
+    codes.set(identifier, { ...record });
+  },
+  async consumeCorrectCode(identifier, codeHash, now) {
+    const row = codes.get(identifier);
+    if (!row || row.expiresAt <= now || row.codeHash !== codeHash) return null;
+    codes.delete(identifier);
+    return row;
+  },
+  async recordWrongAttempt(identifier, now) {
+    const row = codes.get(identifier);
+    if (!row || row.expiresAt <= now) return { exists: false, burned: false, attempts: 0 };
+    row.attempts += 1;
+    if (row.attempts >= 5) {
+      codes.delete(identifier);
+      return { exists: true, burned: true, attempts: 5 };
     }
-    case "TTL": {
-      const row = alive(key);
-      if (!row) return -2;
-      if (!row.expiresAt) return -1;
-      return Math.ceil((row.expiresAt - Date.now()) / 1000);
-    }
-    default:
-      throw new Error(`the fake redis does not know ${op}`);
-  }
-}
-
-global.fetch = async (_url, init) =>
-  new Response(JSON.stringify({ result: run(JSON.parse(init.body)) }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+    return { exists: true, burned: false, attempts: row.attempts };
+  },
+  async clearLimit(identifier) {
+    limits.delete(identifier);
+  },
+};
 
 // ------------------------------------------------------------ harness
 
@@ -87,6 +79,9 @@ function check(condition, what, detail = "") {
 const session = await import("../lib/session.js");
 const otp = await import("../lib/otp.js");
 const readiness = await import("../lib/auth-ready.js");
+process.env.NODE_ENV = "test";
+otp.setOtpStoreForTests(store);
+process.env.NODE_ENV = "production";
 
 // The public pages must not be accidentally locked while production setup is
 // incomplete. The gate activates only when all four services are present.
@@ -227,7 +222,7 @@ check((await otp.check("email:one@example.com", b.code)).ok === false ||
 // database could sign in as anyone.
 store.clear();
 const secret = await otp.issue(who);
-const saved = store.get("mt:otp:" + who)?.value || "";
+const saved = JSON.stringify(codes.get(who) || {});
 check(!saved.includes(secret.code),
       "the code itself is never written down", saved.slice(0, 80));
 

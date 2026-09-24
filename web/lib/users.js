@@ -1,5 +1,4 @@
-/** MongoDB-backed reader profiles. OTPs remain short-lived in Redis; MongoDB
- * stores only the durable details we need between sign-ins. */
+/** MongoDB-backed reader profiles. */
 
 import { MongoClient } from "mongodb";
 
