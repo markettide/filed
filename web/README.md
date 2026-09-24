@@ -109,13 +109,16 @@ statistics.
 
 ## Where the emails go
 
-MongoDB is the durable user/profile database. Upstash Redis remains the mailing
-list read by the Daily Brief sender, so both stores are updated on subscription.
+MongoDB is the durable user/profile and traffic database. Existing Redis
+visitor totals are captured once as a baseline during deployment so public
+counters do not reset. Upstash Redis continues to hold the published market
+snapshots, brief PDFs and mailing list. Market-data readers reuse each snapshot
+for one minute to avoid charging Redis repeatedly for identical responses.
 
 **Upstash Redis (recommended).** In your Vercel project go to Storage → Upstash
 Redis → Create. It injects `UPSTASH_REDIS_REST_URL` and
-`UPSTASH_REDIS_REST_TOKEN` for you. Free tier is far more than a waitlist needs,
-and it de-duplicates emails automatically.
+`UPSTASH_REDIS_REST_TOKEN` for you. The mailing list de-duplicates emails
+automatically.
 
 **Any webhook.** Set `WAITLIST_WEBHOOK_URL` to a Google Apps Script, Zapier,
 Make, Slack or Discord endpoint. Each signup is POSTed as JSON.

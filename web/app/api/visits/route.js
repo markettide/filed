@@ -1,68 +1,21 @@
 export const dynamic = "force-dynamic";
 
-import { recordEngagement } from "../../../lib/engagement";
+import { recordEngagement, recordTraffic, trafficTotals } from "../../../lib/engagement";
 import { currentUser } from "../../../lib/session";
 
 /**
- * Visitor counts, kept in the same KV store as everything else.
+ * Visitor counts are kept in MongoDB alongside the detailed sessions. Redis
+ * used to receive several commands for every page view and heartbeat; its
+ * lifetime totals are captured once as a no-loss migration baseline.
  *
- *   POST /api/visits   { id }   count this visit, return the totals
+ *   POST /api/visits   { id }   count this visit
  *   GET  /api/visits             just read the totals
- *
- * Three numbers:
- *   mt:visits:total   every page view, ever            (INCR)
- *   mt:visits:uniq    distinct browsers                 (PFADD / PFCOUNT)
- *   mt:visits:live    browsers seen in the last 5 min   (ZADD / ZCOUNT)
  *
  * `id` is a random string the browser makes up and keeps in localStorage. No
  * IP address, no fingerprint, nothing that identifies a person - it only has
- * to be stable enough to tell one browser from another. HyperLogLog then
- * counts the distinct ones in about 12 KB however many there are, and cannot
- * be read back to recover the ids that went into it.
+ * to be stable enough to tell one browser from another. MongoDB stores that
+ * pseudonymous ID so a returning browser is not counted as a new visitor.
  */
-
-const URL_ = process.env.KV_REST_API_URL;
-const TOKEN = process.env.KV_REST_API_TOKEN;
-
-const LIVE_WINDOW_SECONDS = 300;
-
-async function redis(command) {
-  if (!URL_ || !TOKEN) return null;
-  const r = await fetch(URL_, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(command),
-    cache: "no-store",
-  });
-  if (!r.ok) return null;
-  return (await r.json()).result;
-}
-
-/** Several commands in one round trip. */
-async function pipeline(commands) {
-  if (!URL_ || !TOKEN) return [];
-  try {
-    const r = await fetch(`${URL_}/pipeline`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(commands),
-      cache: "no-store",
-    });
-    if (!r.ok) return [];
-    const out = await r.json();
-    return Array.isArray(out) ? out.map((x) => x.result) : [];
-  } catch {
-    // Detailed session analytics can still be recorded in MongoDB when the
-    // lightweight public counters are temporarily unavailable.
-    return [];
-  }
-}
 
 function cleanId(v) {
   // Only what the browser is supposed to send, and never more of it than the
@@ -75,30 +28,16 @@ function cleanPath(value) {
   return path.startsWith("/") && !path.includes("?") ? path : "/";
 }
 
-async function totals(now) {
-  const [total, uniq, live] = await pipeline([
-    ["GET", "mt:visits:total"],
-    ["PFCOUNT", "mt:visits:uniq"],
-    ["ZCOUNT", "mt:visits:live", now - LIVE_WINDOW_SECONDS, "+inf"],
-  ]);
-  return {
-    total: Number(total || 0),
-    unique: Number(uniq || 0),
-    live: Number(live || 0),
-  };
-}
-
 export async function GET() {
-  if (!URL_ || !TOKEN) return Response.json({ total: 0, unique: 0, live: 0 });
-  const now = Math.floor(Date.now() / 1000);
-  return Response.json(await totals(now), {
-    headers: { "Cache-Control": "no-store" },
+  const { baselineReady: _, ...totals } = await trafficTotals();
+  return Response.json(totals, {
+    // Shared counters are safe to cache and this collapses many browser polls
+    // into one MongoDB read at Vercel's edge.
+    headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" },
   });
 }
 
 export async function POST(request) {
-  if (!URL_ || !TOKEN) return Response.json({ total: 0, unique: 0, live: 0 });
-
   let id = "";
   let sessionId = "";
   let path = "/";
@@ -115,17 +54,13 @@ export async function POST(request) {
     /* a body we cannot read is still a visit */
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  const writes = event === "pageview" ? [["INCR", "mt:visits:total"]] : [];
-  if (id) {
-    writes.push(["PFADD", "mt:visits:uniq", id]);
-    writes.push(["ZADD", "mt:visits:live", now, id]);
-    // Anything older than the window is no longer "live", and left alone the
-    // set would grow for ever.
-    writes.push(["ZREMRANGEBYSCORE", "mt:visits:live", "-inf",
-                 now - LIVE_WINDOW_SECONDS]);
+  // Lifetime totals change only when a page is opened. Heartbeats update the
+  // detailed session below, which is also the source for "reading now".
+  if (id && event === "pageview") {
+    await recordTraffic({ visitorId: id, event }).catch((error) => {
+      console.error("[visits] traffic save failed:", error.message || error);
+    });
   }
-  await pipeline(writes);
 
   if (id && sessionId) {
     const user = currentUser(request);
@@ -137,7 +72,7 @@ export async function POST(request) {
     });
   }
 
-  return Response.json(await totals(now), {
+  return Response.json({ ok: true }, {
     headers: { "Cache-Control": "no-store" },
   });
 }

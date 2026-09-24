@@ -6,6 +6,8 @@
  * the same way insider trades are.
  */
 
+import { withServerCache } from "./server-cache";
+
 const URL_ =
   process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
 const TOKEN =
@@ -63,7 +65,7 @@ async function readDay(day) {
  * The last `days` days of deals, newest day first, each row carrying the day
  * it belongs to.
  */
-export async function bulkBlockDeals({ days = DAYS } = {}) {
+async function loadBulkBlockDeals({ days = DAYS } = {}) {
   const index = parse(await redis(["GET", "mt:deals:index"])) || [];
   const meta = parse(await redis(["GET", "mt:deals:meta"]));
   const wanted = index.slice(0, days);
@@ -76,6 +78,14 @@ export async function bulkBlockDeals({ days = DAYS } = {}) {
   });
 
   return { days: wanted, deals: out, meta };
+}
+
+export async function bulkBlockDeals({ days = DAYS } = {}) {
+  return withServerCache(
+    `deals:${days}`,
+    60_000,
+    () => loadBulkBlockDeals({ days })
+  );
 }
 
 export function isBuy(row) {

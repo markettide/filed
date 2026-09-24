@@ -5,6 +5,10 @@ import { MongoClient } from "mongodb";
 const RETENTION_SECONDS = 60 * 60 * 24 * 90;
 let clientPromise;
 let indexesReady;
+let trafficIndexesReady;
+
+const TRAFFIC_ID = "traffic";
+const LIVE_WINDOW_SECONDS = 300;
 
 function dateInIndia(value = new Date()) {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -42,6 +46,161 @@ async function collection() {
   }
   await indexesReady;
   return sessions;
+}
+
+async function trafficCollections() {
+  if (!process.env.MONGODB_URI) return null;
+  if (!clientPromise) {
+    clientPromise = new MongoClient(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 6000,
+    }).connect();
+  }
+  const client = await clientPromise;
+  const db = client.db(process.env.MONGODB_DB || "market_tide");
+  const metrics = db.collection("site_metrics");
+  const visitors = db.collection("site_visitors");
+  const sessions = db.collection("visit_sessions");
+  if (!trafficIndexesReady) {
+    trafficIndexesReady = Promise.all([
+      visitors.createIndex({ lastSeenAt: -1 }),
+      sessions.createIndex({ visitorId: 1, startedAt: 1 }),
+    ]);
+  }
+  await trafficIndexesReady;
+  return { metrics, visitors, sessions };
+}
+
+async function redisTrafficBaseline() {
+  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+
+  try {
+    const response = await fetch(`${url}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify([
+        ["GET", "mt:visits:total"],
+        ["PFCOUNT", "mt:visits:uniq"],
+      ]),
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    const result = await response.json();
+    if (!Array.isArray(result)) return null;
+    return {
+      total: Math.max(0, Number(result[0]?.result || 0)),
+      unique: Math.max(0, Number(result[1]?.result || 0)),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Capture Redis' lifetime counters exactly once. The Redis HyperLogLog cannot
+ * expose its member IDs, so its unique count becomes an immutable baseline;
+ * MongoDB adds only genuinely new browsers after the cut-over.
+ */
+async function ensureTrafficBaseline(metrics) {
+  let current = await metrics.findOne({ _id: TRAFFIC_ID });
+  if (current?.baselineCapturedAt) return current;
+
+  const baseline = await redisTrafficBaseline();
+  if (!baseline) return current;
+
+  const capturedAt = new Date();
+  try {
+    await metrics.updateOne(
+      { _id: TRAFFIC_ID, baselineCapturedAt: { $exists: false } },
+      {
+        $set: {
+          baselineTotal: baseline.total,
+          baselineUnique: baseline.unique,
+          baselineCapturedAt: capturedAt,
+          updatedAt: capturedAt,
+        },
+        $setOnInsert: { totalAfterBaseline: 0, uniqueAfterBaseline: 0 },
+      },
+      { upsert: true }
+    );
+  } catch (error) {
+    // Two cold server instances may capture the same baseline together. The
+    // unique _id makes one win; the loser simply reads the stored baseline.
+    if (error?.code !== 11000) throw error;
+  }
+  current = await metrics.findOne({ _id: TRAFFIC_ID });
+  return current;
+}
+
+/** Record public traffic without spending Redis commands. */
+export async function recordTraffic({ visitorId, event }) {
+  const collections = await trafficCollections();
+  if (!collections || !visitorId) return false;
+  const { metrics, visitors, sessions } = collections;
+  const baseline = await ensureTrafficBaseline(metrics);
+  const now = new Date();
+
+  const visitor = await visitors.updateOne(
+    { _id: visitorId },
+    { $set: { lastSeenAt: now }, $setOnInsert: { firstSeenAt: now } },
+    { upsert: true }
+  );
+
+  let uniqueIncrement = 0;
+  if (visitor.upsertedCount) {
+    // Session analytics was already in MongoDB before this migration. If the
+    // browser appeared before the Redis baseline was captured, it is already
+    // included in baselineUnique and must not be counted twice.
+    const wasInBaseline = baseline?.baselineCapturedAt
+      ? await sessions.findOne(
+          { visitorId, startedAt: { $lt: new Date(baseline.baselineCapturedAt) } },
+          { projection: { _id: 1 } }
+        )
+      : null;
+    uniqueIncrement = wasInBaseline ? 0 : 1;
+  }
+
+  const totalIncrement = event === "pageview" ? 1 : 0;
+  if (totalIncrement || uniqueIncrement) {
+    await metrics.updateOne(
+      { _id: TRAFFIC_ID },
+      {
+        $inc: {
+          totalAfterBaseline: totalIncrement,
+          uniqueAfterBaseline: uniqueIncrement,
+        },
+        $set: { updatedAt: now },
+        $setOnInsert: { baselineTotal: 0, baselineUnique: 0 },
+      },
+      { upsert: true }
+    );
+  }
+  return true;
+}
+
+/** Lifetime counters plus readers active during the same five-minute window. */
+export async function trafficTotals() {
+  const collections = await trafficCollections();
+  if (!collections) return { total: 0, unique: 0, live: 0, baselineReady: false };
+  const { metrics, sessions } = collections;
+  const row = await ensureTrafficBaseline(metrics);
+  const cutoff = new Date(Date.now() - LIVE_WINDOW_SECONDS * 1000);
+  const liveVisitors = await sessions.distinct("visitorId", {
+    lastSeenAt: { $gte: cutoff },
+    active: { $ne: false },
+  });
+  return {
+    total: Math.max(0, Number(row?.baselineTotal || 0))
+      + Math.max(0, Number(row?.totalAfterBaseline || 0)),
+    unique: Math.max(0, Number(row?.baselineUnique || 0))
+      + Math.max(0, Number(row?.uniqueAfterBaseline || 0)),
+    live: liveVisitors.filter(Boolean).length,
+    baselineReady: Boolean(row?.baselineCapturedAt),
+  };
 }
 
 export async function recordEngagement({ visitorId, sessionId, email, path, event }) {

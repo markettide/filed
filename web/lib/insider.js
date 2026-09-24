@@ -5,6 +5,8 @@
  * not prose - so it is kept apart from the announcements and read here.
  */
 
+import { withServerCache } from "./server-cache";
+
 const URL_ =
   process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
 const TOKEN =
@@ -62,7 +64,7 @@ async function readDay(day) {
  * The last `days` days of trades, newest day first, each row carrying the day
  * it belongs to.
  */
-export async function insiderTrades({ days = DAYS } = {}) {
+async function loadInsiderTrades({ days = DAYS } = {}) {
   const index = parse(await redis(["GET", "mt:insider:index"])) || [];
   const meta = parse(await redis(["GET", "mt:insider:meta"]));
   const wanted = index.slice(0, days);
@@ -75,6 +77,14 @@ export async function insiderTrades({ days = DAYS } = {}) {
   });
 
   return { days: wanted, trades, meta };
+}
+
+export async function insiderTrades({ days = DAYS } = {}) {
+  return withServerCache(
+    `insider:${days}`,
+    60_000,
+    () => loadInsiderTrades({ days })
+  );
 }
 
 /** Rupees, the way an Indian reader expects to see them. */

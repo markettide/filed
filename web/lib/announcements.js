@@ -7,6 +7,8 @@
  *   mt:meta            ->  when it last ran and what it found
  */
 
+import { withServerCache } from "./server-cache";
+
 const DAYS = 7;
 
 function creds() {
@@ -267,7 +269,7 @@ function foldDuplicates(items) {
  * summaries. scope "all" also pulls the routine ones, which is a lot more data,
  * so the page only asks for it when someone clicks the All tab.
  */
-export async function recent({ scope = "important", sort = "latest" } = {}) {
+async function loadRecent({ scope = "important", sort = "latest" } = {}) {
   if (!configured()) return { days: [], items: [], meta: null };
 
   const [indexRaw, metaRaw] = await redis(["MGET", "mt:index", "mt:meta"]);
@@ -302,6 +304,16 @@ export async function recent({ scope = "important", sort = "latest" } = {}) {
   // Sorted first, so the entry that survives a fold is the best one under the
   // order the reader actually asked for.
   return { days, items: foldDuplicates(items), meta };
+}
+
+export async function recent({ scope = "important", sort = "latest" } = {}) {
+  // One shared snapshot per scope/sort combination. Access control remains in
+  // the API route and newly published filings appear within at most a minute.
+  return withServerCache(
+    `announcements:${scope}:${sort}`,
+    60_000,
+    () => loadRecent({ scope, sort })
+  );
 }
 
 // ---------------------------------------------------------------------------
