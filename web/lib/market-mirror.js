@@ -6,7 +6,9 @@ let clientPromise;
 let warned = false;
 
 export function marketMirrorEnabled() {
-  return process.env.MONGO_MARKET_READS === "1" && Boolean(process.env.MONGODB_URI);
+  // MongoDB is now the preferred market-data store whenever it is configured.
+  // An explicit zero remains an instant Redis-only rollback switch.
+  return process.env.MONGO_MARKET_READS !== "0" && Boolean(process.env.MONGODB_URI);
 }
 
 async function collection() {

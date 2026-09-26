@@ -137,9 +137,10 @@ python tools/migrate_redis_to_mongo.py --write --verify
 After the initial copy and dual writes have been observed, set
 `MONGO_MIRROR_REQUIRED=1` in the publishing workflows before switching reads.
 That makes any missed MongoDB write fail visibly rather than silently relying
-on Redis. Set `MONGO_MARKET_READS=1` in Vercel only after that observation
-period. MongoDB then becomes the preferred market-data reader, while any
-missing or expired mirror value automatically falls back to Redis.
+on Redis. Once `MONGODB_URI` is configured, MongoDB becomes the preferred
+market-data reader, while any missing or expired mirror value automatically
+falls back to Redis. Set `MONGO_MARKET_READS=0` in Vercel for an immediate
+Redis-only rollback if required.
 
 **Upstash Redis (recommended).** In your Vercel project go to Storage → Upstash
 Redis → Create. It injects `UPSTASH_REDIS_REST_URL` and
