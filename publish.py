@@ -36,7 +36,7 @@ import mcap
 import rules
 import triage
 import pipeline
-from mongo_mirror import mirror_safely
+from mongo_mirror import configured as mongo_configured, mirror_command, read_command
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KEEP_DAYS = 7
@@ -143,14 +143,32 @@ MAX_BYTES = 700_000        # stay comfortably inside the REST request limit
 
 
 def redis(url, token, command):
-    r = requests.post(url, headers={"Authorization": f"Bearer {token}",
-                                    "Content-Type": "application/json"},
-                      json=command, timeout=90)
-    if not r.ok:
-        raise RuntimeError(f"Redis {r.status_code}: {r.text[:200]}")
-    result = r.json().get("result")
-    mirror_safely(command, "announcements")
-    return result
+    operation = str(command[0]).upper() if command else ""
+    if operation in {"GET", "MGET"} and mongo_configured():
+        handled, result = read_command(command)
+        if handled:
+            return result
+
+    mongo_result = False
+    if operation in {"SET", "DEL"} and mongo_configured():
+        mongo_result = mirror_command(command, "announcements")
+
+    if url and token:
+        try:
+            r = requests.post(url, headers={"Authorization": f"Bearer {token}",
+                                            "Content-Type": "application/json"},
+                              json=command, timeout=90)
+            if not r.ok:
+                raise RuntimeError(f"Redis {r.status_code}: {r.text[:200]}")
+            return r.json().get("result")
+        except Exception as error:
+            if not mongo_result:
+                raise
+            print(f"Redis transition mirror unavailable: {error}", file=sys.stderr)
+
+    if mongo_result:
+        return "OK" if operation == "SET" else 1
+    raise RuntimeError("Neither MongoDB nor Redis storage is configured")
 
 
 def write_day(url, token, key, rows):
@@ -263,8 +281,8 @@ def main():
     args = p.parse_args()
 
     url, token = redis_creds()
-    if not args.dry_run and not (url and token):
-        sys.exit("No Redis credentials. Set KV_REST_API_URL and KV_REST_API_TOKEN.")
+    if not args.dry_run and not (mongo_configured() or (url and token)):
+        sys.exit("No storage configured. Set MONGODB_URI or Redis credentials.")
 
     provider_list = load_providers()
     print(f"Reading PDFs on {args.read_workers or max(1, args.workers) * 3} threads, summarising on {args.workers}")

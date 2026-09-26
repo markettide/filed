@@ -1,4 +1,3 @@
-import { listEmails } from "./store";
 import { listUsersForAdmin } from "./users";
 import { listPaidOrdersForAdmin } from "./payments";
 import { dailyEngagement, engagementTrend, liveEngagement, trafficTotals } from "./engagement";
@@ -56,10 +55,9 @@ function sourceLabel(source) {
 }
 
 export async function adminData(selectedDate, trendDays = 30, options = {}) {
-  const [mongoRows, paidOrders, waitlistRows, visitTotals, engagement, liveReaders, trend] = await Promise.all([
+  const [mongoRows, paidOrders, visitTotals, engagement, liveReaders, trend] = await Promise.all([
     listUsersForAdmin(),
     listPaidOrdersForAdmin(),
-    listEmails(),
     trafficTotals(),
     dailyEngagement(selectedDate),
     liveEngagement(),
@@ -99,18 +97,6 @@ export async function adminData(selectedDate, trendDays = 30, options = {}) {
       member.createdAt, member.lastLoginAt, iso(row.emailVerifiedAt), iso(row.updatedAt),
       iso(row.briefSubscribedAt), iso(row.briefSubscriptionUpdatedAt), iso(row.leadUpdatedAt)
     );
-  }
-
-  for (const row of waitlistRows) {
-    const member = ensure(row.email);
-    if (!member) continue;
-    member.phone = member.phone || row.phone || null;
-    const source = String(row.source || "waitlist").toLowerCase();
-    member.subscribed = member.subscribed || NEWSLETTER_SOURCES.has(source);
-    const label = sourceLabel(source);
-    if (label) member.sources.add(label);
-    member.createdAt = member.createdAt || iso(row.at);
-    member.lastActivityAt = newest(member.lastActivityAt, iso(row.at));
   }
 
   const rows = [...members.values()].map((member) => ({ ...member, sources: [...member.sources] }))

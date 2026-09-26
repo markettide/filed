@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { readMarketMirror } from "../../../../lib/market-mirror.js";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,8 @@ const STUCK_MINUTES = 55;
 
 /** One Redis command, or null if the store is unreachable or unconfigured. */
 async function redis(command) {
+  const mirrored = await readMarketMirror(command);
+  if (mirrored.hit) return mirrored.result;
   const url =
     process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
   const token =
@@ -199,7 +202,7 @@ async function runningForMinutes(token) {
  * Minutes since publish.py last wrote mt:meta, or null if that cannot be read.
  *
  * Null means "no opinion" and the dispatch goes ahead. Being unable to reach
- * Redis is not a reason to stop refreshing the site.
+ * Storage unavailability is not a reason to stop refreshing the site.
  */
 async function minutesSincePublish() {
   const raw = await redis(["GET", "mt:meta"]);

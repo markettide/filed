@@ -132,9 +132,11 @@ def fetch(day=None, source=None, max_pages=MAX_PAGES, earliest=None):
         headers = {"User-Agent": "markettide-brief"}
         # Premium protects the browser API, but the PDF worker still needs a
         # secure server-to-server read. Derive a purpose-specific signature
-        # from the Redis token already shared by Actions and Vercel. Never send
-        # the Redis credential itself.
-        worker_secret = (os.environ.get("KV_REST_API_TOKEN")
+        # from a secret already shared by Actions and Vercel. Never send the
+        # secret itself.
+        worker_secret = (os.environ.get("BRIEF_WORKER_SECRET")
+                         or os.environ.get("MONGODB_URI")
+                         or os.environ.get("KV_REST_API_TOKEN")
                          or os.environ.get("UPSTASH_REDIS_REST_TOKEN"))
         if worker_secret:
             headers["X-Brief-Worker"] = hmac.new(
@@ -525,16 +527,32 @@ MAX_CHARS = 600_000        # inside Upstash's REST request limit, as publish.py
 
 
 def _redis(url, token, command):
+    """Use MongoDB first and keep Redis as an optional transition mirror."""
     import requests
-    r = requests.post(url, headers={"Authorization": f"Bearer {token}",
-                                    "Content-Type": "application/json"},
-                      json=command, timeout=90)
-    if not r.ok:
-        raise RuntimeError(f"Redis {r.status_code}: {r.text[:200]}")
-    result = r.json().get("result")
-    from mongo_mirror import mirror_safely
-    mirror_safely(command, "brief")
-    return result
+    from mongo_mirror import configured, mirror_command, read_command
+    operation = str(command[0]).upper() if command else ""
+    if operation in {"GET", "MGET"} and configured():
+        handled, result = read_command(command)
+        if handled:
+            return result
+    mongo_result = False
+    if operation in {"SET", "DEL"} and configured():
+        mongo_result = mirror_command(command, "brief")
+    if url and token:
+        try:
+            r = requests.post(url, headers={"Authorization": f"Bearer {token}",
+                                            "Content-Type": "application/json"},
+                              json=command, timeout=90)
+            if not r.ok:
+                raise RuntimeError(f"Redis {r.status_code}: {r.text[:200]}")
+            return r.json().get("result")
+        except Exception as error:
+            if not mongo_result:
+                raise
+            print(f"  Redis transition mirror unavailable: {error}", file=sys.stderr)
+    if mongo_result:
+        return "OK" if operation == "SET" else 1
+    raise RuntimeError("Neither MongoDB nor Redis storage is configured")
 
 
 def store(day_iso, pdf_path, url, token):
@@ -701,8 +719,8 @@ def main():
     if args.publish:
         url = os.environ.get("KV_REST_API_URL")
         token = os.environ.get("KV_REST_API_TOKEN")
-        if not (url and token):
-            sys.exit("  --publish needs KV_REST_API_URL and KV_REST_API_TOKEN")
+        if not ((url and token) or os.environ.get("MONGODB_URI")):
+            sys.exit("  --publish needs MONGODB_URI or Redis credentials")
         parts, held = store(day_iso, pdf_path, url, token)
         print(f"  published as {parts} part(s); {held} older issue(s) removed")
         print(f"  https://markettide.in/brief/{day_iso}")

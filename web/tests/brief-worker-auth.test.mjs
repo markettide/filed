@@ -3,9 +3,13 @@ import { briefWorkerToken, isBriefWorker } from "../lib/brief-worker-auth.js";
 
 const originalKv = process.env.KV_REST_API_TOKEN;
 const originalUpstash = process.env.UPSTASH_REDIS_REST_TOKEN;
+const originalWorker = process.env.BRIEF_WORKER_SECRET;
+const originalMongo = process.env.MONGODB_URI;
 
 try {
-  process.env.KV_REST_API_TOKEN = "test-shared-secret";
+  process.env.BRIEF_WORKER_SECRET = "test-shared-secret";
+  delete process.env.MONGODB_URI;
+  delete process.env.KV_REST_API_TOKEN;
   delete process.env.UPSTASH_REDIS_REST_TOKEN;
 
   const token = briefWorkerToken();
@@ -21,7 +25,7 @@ try {
   assert.equal(isBriefWorker(request("short")), false);
   assert.equal(isBriefWorker(request(null)), false);
 
-  delete process.env.KV_REST_API_TOKEN;
+  delete process.env.BRIEF_WORKER_SECRET;
   assert.equal(briefWorkerToken(), "");
   assert.equal(isBriefWorker(request(token)), false);
 
@@ -31,4 +35,8 @@ try {
   else process.env.KV_REST_API_TOKEN = originalKv;
   if (originalUpstash === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
   else process.env.UPSTASH_REDIS_REST_TOKEN = originalUpstash;
+  if (originalWorker === undefined) delete process.env.BRIEF_WORKER_SECRET;
+  else process.env.BRIEF_WORKER_SECRET = originalWorker;
+  if (originalMongo === undefined) delete process.env.MONGODB_URI;
+  else process.env.MONGODB_URI = originalMongo;
 }

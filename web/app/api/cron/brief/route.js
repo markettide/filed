@@ -1,5 +1,6 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+import { briefDays } from "../../../../lib/brief.js";
 
 const OWNER = "markettide";
 const REPO = "filed";
@@ -10,23 +11,8 @@ function todayIST() {
 }
 
 async function newestBrief() {
-  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
-  if (!url || !token) return null;
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(["GET", "mt:brief:index"]),
-    cache: "no-store",
-  });
-  if (!response.ok) throw new Error(`Redis ${response.status}`);
-  const raw = (await response.json()).result;
-  try {
-    const days = JSON.parse(raw || "[]");
-    return Array.isArray(days) ? days[0] || null : null;
-  } catch {
-    return null;
-  }
+  const days = await briefDays();
+  return days[0] || null;
 }
 
 export async function GET(request) {

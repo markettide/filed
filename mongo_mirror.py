@@ -1,8 +1,8 @@
-"""Mirror Redis string writes into MongoDB during the storage migration.
+"""Redis-compatible string storage backed by MongoDB.
 
-Redis remains the source of truth until the read-side cut-over is verified.
-This module only copies SET/DEL mutations into an isolated ``redis_mirror``
-collection, preserving the key, value and expiry time.
+The collection preserves the old key/value/expiry shape so publishers can use
+MongoDB as the source of truth while Redis remains an optional transition
+mirror.
 """
 
 import datetime
@@ -97,6 +97,32 @@ def mirror_command(command, source="publisher"):
         return True
 
     return False
+
+
+def read_command(command):
+    """Read GET/MGET using Redis-compatible return values."""
+    if not configured() or not command:
+        return False, None
+    operation = str(command[0]).upper()
+    keys = ([str(command[1])] if operation == "GET" and len(command) >= 2
+            else [str(key) for key in command[1:]] if operation == "MGET"
+            else [])
+    if not keys:
+        return False, None
+    now = datetime.datetime.now(datetime.timezone.utc)
+    rows = _store().find(
+        {
+            "_id": {"$in": keys},
+            "$or": [
+                {"expiresAt": {"$exists": False}},
+                {"expiresAt": {"$gt": now}},
+            ],
+        },
+        {"value": 1},
+    )
+    values = {str(row["_id"]): row.get("value") for row in rows}
+    result = [values.get(key) for key in keys]
+    return True, result[0] if operation == "GET" else result
 
 
 def mirror_safely(command, source="publisher"):

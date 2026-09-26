@@ -218,6 +218,36 @@ export async function subscribeUser({ email, phone = null, source = "brief" }) {
   return { email, alreadySubscribed };
 }
 
+/** Newsletter audience in the legacy export shape, now sourced from MongoDB. */
+export async function listNewsletterSubscribers(limit = 10000) {
+  const users = await collection();
+  return users.find(
+    { briefSubscribed: true },
+    {
+      projection: {
+        _id: 0,
+        email: 1,
+        phone: 1,
+        briefSubscribedAt: 1,
+        briefSubscriptionUpdatedAt: 1,
+        briefSubscriptionSource: 1,
+      },
+    }
+  ).sort({ briefSubscribedAt: 1 }).limit(Math.max(1, Math.min(Number(limit) || 10000, 10000)))
+    .toArray()
+    .then((rows) => rows.map((row) => ({
+      email: row.email,
+      phone: row.phone || null,
+      at: row.briefSubscribedAt || row.briefSubscriptionUpdatedAt || null,
+      source: row.briefSubscriptionSource || "brief",
+    })));
+}
+
+export async function countNewsletterSubscribers() {
+  const users = await collection();
+  return users.countDocuments({ briefSubscribed: true });
+}
+
 /** Track whether a newsletter subscriber has reached Kit successfully. */
 export async function markKitSync(email, status, detail = null) {
   const users = await collection();

@@ -109,11 +109,11 @@ statistics.
 
 ## Where the emails go
 
-MongoDB is the durable user/profile and traffic database. Existing Redis
-visitor totals are captured once as a baseline during deployment so public
-counters do not reset. Upstash Redis continues to hold the published market
-snapshots, brief PDFs and mailing list. Market-data readers reuse each snapshot
-for one minute to avoid charging Redis repeatedly for identical responses.
+MongoDB is the durable user/profile, traffic, market-data, brief, subscriber,
+rate-limit and broadcast-state database. Existing Redis visitor totals are
+captured once as a baseline during deployment so public counters do not reset.
+During the final observation period Upstash remains an optional transition
+mirror; the application no longer requires it for normal operation.
 
 ### Redis to MongoDB migration
 
@@ -142,10 +142,10 @@ market-data reader, while any missing or expired mirror value automatically
 falls back to Redis. Set `MONGO_MARKET_READS=0` in Vercel for an immediate
 Redis-only rollback if required.
 
-**Upstash Redis (recommended).** In your Vercel project go to Storage → Upstash
-Redis → Create. It injects `UPSTASH_REDIS_REST_URL` and
-`UPSTASH_REDIS_REST_TOKEN` for you. The mailing list de-duplicates emails
-automatically.
+**Optional Redis transition mirror.** Existing `UPSTASH_REDIS_REST_URL` and
+`UPSTASH_REDIS_REST_TOKEN` values may remain connected during observation.
+Publishers update them on a best-effort basis, but MongoDB is the source of
+truth and the application continues normally when Redis is unavailable.
 
 **Any webhook.** Set `WAITLIST_WEBHOOK_URL` to a Google Apps Script, Zapier,
 Make, Slack or Discord endpoint. Each signup is POSTed as JSON.

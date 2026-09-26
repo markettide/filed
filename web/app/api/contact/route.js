@@ -1,30 +1,20 @@
 import { emailConfigured, sendContactMessage } from "../../../lib/notify";
-import crypto from "node:crypto";
+import { rateLimit } from "../../../lib/rate-limit";
 
 export const runtime = "nodejs";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 async function tooMany(request) {
-  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return false;
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const key = `mt:contact:${crypto.createHash("sha256").update(ip).digest("hex").slice(0, 20)}`;
-  const call = async (command) => {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify(command),
-      cache: "no-store",
-    });
-    if (!response.ok) throw new Error(`Redis ${response.status}`);
-    return (await response.json()).result;
-  };
   try {
-    const count = Number(await call(["INCR", key]));
-    if (count === 1) await call(["EXPIRE", key, "3600"]);
-    return count > 5;
+    const result = await rateLimit({
+      scope: "contact",
+      identifier: ip,
+      maximum: 5,
+      windowSeconds: 3600,
+    });
+    return !result.allowed;
   } catch (error) {
     console.error("[contact] rate limit unavailable:", error.message || error);
     return false;

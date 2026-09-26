@@ -6,8 +6,8 @@
  * second storage service to keep alive. Here we put it back together.
  */
 
-import { withServerCache } from "./server-cache";
-import { readMarketMirror } from "./market-mirror";
+import { withServerCache } from "./server-cache.js";
+import { readMarketMirror } from "./market-mirror.js";
 
 const URL_ = process.env.KV_REST_API_URL;
 const TOKEN = process.env.KV_REST_API_TOKEN;

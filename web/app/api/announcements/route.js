@@ -41,8 +41,8 @@ function inBand(row, band) {
 
 export async function GET(request) {
   // The GitHub morning-brief worker needs the same read-only data as the
-  // Premium dashboard. It authenticates with an HMAC derived from the Redis
-  // credential already shared by GitHub Actions and Vercel; the credential
+  // Premium dashboard. It authenticates with a purpose-specific HMAC derived
+  // from a secret already shared by GitHub Actions and Vercel; the secret
   // itself is never sent over the wire. Everyone else still needs Premium.
   if (!isBriefWorker(request)) {
     const entitlement = await requirePremiumAccess(request);

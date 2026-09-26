@@ -1,4 +1,10 @@
 import { scheduleDailyBriefBroadcast, kitBroadcastConfigured } from "../../../../../lib/kit-broadcast";
+import { briefDays } from "../../../../../lib/brief.js";
+import {
+  claimBriefBroadcast,
+  completeBriefBroadcast,
+  releaseBriefBroadcast,
+} from "../../../../../lib/operational-state.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,32 +36,14 @@ function eightAmOrSoon(day) {
   return (eightAm.getTime() > Date.now() + 60000 ? eightAm : new Date(Date.now() + 60000)).toISOString();
 }
 
-async function redis(command) {
-  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
-  if (!url || !token) throw new Error("Redis is not configured.");
-  const result = await fetch(url, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(command),
-    cache: "no-store",
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!result.ok) throw new Error(`Redis ${result.status}`);
-  return (await result.json()).result;
-}
-
 async function handler(request) {
   if (!authorized(request)) return new Response("Not found.", { status: 404 });
   if (!kitBroadcastConfigured()) return response({ error: "Kit broadcast delivery is not configured." }, 503);
 
   const day = todayIST();
-  const statusKey = `mt:brief:${day}:kit-broadcast`;
   try {
-    const rawIndex = await redis(["GET", "mt:brief:index"]);
-    const index = JSON.parse(rawIndex || "[]");
-    const parts = Number(await redis(["GET", `mt:brief:${day}:parts`]) || 0);
-    if (!Array.isArray(index) || index[0] !== day || parts < 1) {
+    const index = await briefDays();
+    if (index[0] !== day) {
       return response({
         ok: false,
         retry: true,
@@ -64,17 +52,14 @@ async function handler(request) {
       }, 409);
     }
 
-    const lock = await redis(["SET", statusKey, JSON.stringify({ state: "creating", at: new Date().toISOString() }), "NX", "EX", "600"]);
-    if (lock !== "OK") {
-      const existing = await redis(["GET", statusKey]);
-      let detail = existing;
-      try { detail = JSON.parse(existing); } catch {}
-      return response({ ok: true, duplicatePrevented: true, day, broadcast: detail });
+    const claim = await claimBriefBroadcast(day);
+    if (!claim.claimed) {
+      return response({ ok: true, duplicatePrevented: true, day, broadcast: claim.record });
     }
 
     try {
       const broadcast = await scheduleDailyBriefBroadcast({ day, sendAt: eightAmOrSoon(day) });
-      await redis(["SET", statusKey, JSON.stringify({ state: "scheduled", ...broadcast }), "EX", String(STATUS_TTL_SECONDS)]);
+      await completeBriefBroadcast(day, broadcast, STATUS_TTL_SECONDS);
       return response({
         ok: true,
         day,
@@ -82,7 +67,7 @@ async function handler(request) {
         broadcast,
       });
     } catch (error) {
-      await redis(["DEL", statusKey]).catch(() => {});
+      await releaseBriefBroadcast(day).catch(() => {});
       throw error;
     }
   } catch (error) {

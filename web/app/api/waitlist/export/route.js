@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { listEmails } from "../../../../lib/store";
+import { listNewsletterSubscribers } from "../../../../lib/users";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +59,7 @@ export async function GET(request) {
     return new Response("Not found.", { status: 404 });
   }
 
-  const rows = await listEmails();
+  const rows = await listNewsletterSubscribers();
   rows.sort((a, b) => String(a.at).localeCompare(String(b.at)));
 
   const csv = [

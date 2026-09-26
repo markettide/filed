@@ -1,6 +1,6 @@
-import { addEmail, count } from "../../../lib/store";
 import { normalisePhone } from "../../../lib/phone";
 import {
+  countNewsletterSubscribers,
   configured as usersConfigured,
   markKitSync,
   saveLeadUser,
@@ -69,26 +69,10 @@ export async function POST(request) {
       { error: "Couldn't save that. Please try again in a moment." }, { status: 500 });
   }
 
-  let result = {
-    backend: isNewsletterSignup ? "mongodb" : "none-configured",
+  const result = {
+    backend: usersConfigured() ? "mongodb" : "none-configured",
     alreadyJoined: Boolean(subscription?.alreadySubscribed),
   };
-  try {
-    result = await addEmail(email, {
-      phone,
-      wantsWhatsApp: Boolean(phone),
-      source,
-    });
-  } catch (err) {
-    // MongoDB is the source of truth for newsletter subscriptions. The legacy
-    // waitlist mirror must not prevent the Kit audience sync.
-    if (!isNewsletterSignup) {
-      console.error("[waitlist] fallback save failed:", err);
-      return Response.json(
-        { error: "Couldn't save that. Please try again in a moment." }, { status: 500 });
-    }
-    console.warn("[waitlist] legacy waitlist mirror failed:", err.message || err);
-  }
 
   let kitSynced = null;
   if (isNewsletterSignup) {
@@ -138,7 +122,7 @@ export async function POST(request) {
 
 export async function GET() {
   try {
-    return Response.json({ count: await count() });
+    return Response.json({ count: await countNewsletterSubscribers() });
   } catch {
     return Response.json({ count: 0 });
   }

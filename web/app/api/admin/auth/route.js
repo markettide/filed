@@ -7,6 +7,7 @@ import {
   createAdminSession,
   isAdmin,
 } from "../../../../lib/admin-auth";
+import { clearRateLimit, rateLimit } from "../../../../lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,28 +20,19 @@ function privateJson(body, status = 200, headers = {}) {
 }
 
 async function limit(request, clear = false) {
-  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return { allowed: true };
   const key = adminRateLimitKey(request);
-  const command = clear ? ["DEL", key] : ["INCR", key];
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify(command),
-      cache: "no-store",
-    });
-    const count = Number((await response.json()).result || 0);
-    if (!clear && count === 1) {
-      await fetch(url, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify(["EXPIRE", key, 900]),
-        cache: "no-store",
-      });
+    if (clear) {
+      await clearRateLimit("admin-login", key);
+      return { allowed: true };
     }
-    return { allowed: clear || count <= 8, retryMinutes: 15 };
+    const result = await rateLimit({
+      scope: "admin-login",
+      identifier: key,
+      maximum: 8,
+      windowSeconds: 900,
+    });
+    return { allowed: result.allowed, retryMinutes: 15 };
   } catch {
     return { allowed: true };
   }
