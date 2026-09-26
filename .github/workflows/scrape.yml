@@ -249,6 +249,12 @@ jobs:
       # If this fails the run goes red, so a broken dashboard is visible in the
       # Actions tab instead of being found by someone using the site.
       - name: Verify the live site
+        # The same secret newsletter.py uses to reach the Premium API, in the
+        # same order of preference. Without it this step can only see the
+        # public pages, and the DATA checks below it cannot run at all.
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
         run: python tools/verify_live.py
 
       # Ask every category to justify itself, on the data this run just

@@ -13,7 +13,10 @@ quietly publishing a broken dashboard.
 """
 
 import argparse
+import hashlib
+import hmac
 import json
+import os
 import sys
 import urllib.parse
 import urllib.request
@@ -33,8 +36,39 @@ EXPECT_DAYS = 7
 fails, warns = [], []
 
 
+# The dashboard API is Premium-only, and this check is nobody.
+#
+# Since the paywall landed on 19 September every completed run has gone red
+# here - not because the dashboard was broken, but because an unauthenticated
+# reader gets 401 and the verifier treated that as the site being down. A red
+# tick that means nothing is worse than no tick: it trains you to ignore the
+# one that matters, which is the same lesson this file already learned when it
+# was pointed at a paused preview alias.
+#
+# The way through already exists and is not new machinery: newsletter.py signs
+# a purpose-specific HMAC into X-Brief-Worker for exactly this reason, and
+# web/lib/brief-worker-auth.js lets it past. The secret is one Actions and
+# Vercel already share, and the fallback order below must stay identical to
+# both of those files - the server picks the first it has, and a different
+# choice here produces a token that verifies against nothing.
+BRIEF_WORKER_PURPOSE = b"market-tide-brief-worker-v1"
+
+
+def worker_headers():
+    headers = {"User-Agent": "market-tide-verify"}
+    secret = (os.environ.get("BRIEF_WORKER_SECRET")
+              or os.environ.get("MONGODB_URI")
+              or os.environ.get("KV_REST_API_TOKEN")
+              or os.environ.get("UPSTASH_REDIS_REST_TOKEN"))
+    if secret:
+        headers["X-Brief-Worker"] = hmac.new(
+            secret.encode(), BRIEF_WORKER_PURPOSE, hashlib.sha256
+        ).hexdigest()
+    return headers
+
+
 def get(url, timeout=60):
-    req = urllib.request.Request(url, headers={"User-Agent": "market-tide-verify"})
+    req = urllib.request.Request(url, headers=worker_headers())
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode())
 
@@ -59,7 +93,7 @@ def main():
     for path in ("", "/dashboard", "/join", "/terms", "/refund", "/privacy", "/contact"):
         try:
             req = urllib.request.Request(base + path,
-                                         headers={"User-Agent": "market-tide-verify"})
+                                         headers=worker_headers())
             with urllib.request.urlopen(req, timeout=45) as r:
                 code = r.status
         except Exception as e:
@@ -71,7 +105,17 @@ def main():
     try:
         d = get(f"{base}/api/announcements?scope=important")
     except Exception as e:
-        print(f"  [FAIL] the API did not answer: {e}")
+        if getattr(e, "code", 0) in (401, 403):
+            print(f"  [FAIL] the API refused this check: {e}")
+            print("         The dashboard API is Premium-only. This check "
+                  "signs X-Brief-Worker")
+            print("         with BRIEF_WORKER_SECRET, MONGODB_URI or "
+                  "KV_REST_API_TOKEN - whichever")
+            print("         the server picks first. One of those has to "
+                  "reach this step, and")
+            print("         it has to be the SAME one the deployment uses.")
+        else:
+            print(f"  [FAIL] the API did not answer: {e}")
         sys.exit(1)
 
     days = d.get("days") or []
