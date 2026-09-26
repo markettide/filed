@@ -55,6 +55,7 @@ export default function Nav() {
         </button>
         <div className={`nav-links${menuOpen ? " open" : ""}`} id="primary-navigation">
           {link("/dashboard", "Dashboard")}
+          {link("/watchlist", "Watchlist")}
           {link("/brief", "Daily brief")}
           {link("/insider", "Insider trading")}
           {link("/deals", "Bulk & block")}

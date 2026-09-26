@@ -1,0 +1,229 @@
+/* The watchlist page.
+ *
+ * Only what this page adds. The cards, the feed and the shell are the
+ * dashboard's, imported alongside this, so the two pages cannot drift apart
+ * visually any more than they can behaviourally. Every colour here is a theme
+ * variable for the same reason - the site has a light mode, and a hard-coded
+ * grey is how a page ends up looking right in one of them.
+ */
+
+.wl-blurb {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 6px 0 0;
+  max-width: 62ch;
+}
+
+.wl-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin: 18px 0;
+}
+
+.wl-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.wl-panel-head h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--ink);
+}
+
+.wl-count {
+  color: var(--dim);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.wl-upgrade {
+  color: var(--accent);
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.wl-upgrade:hover { text-decoration: underline; }
+
+.wl-badge {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: .04em;
+  padding: 3px 9px;
+  text-transform: uppercase;
+}
+
+/* ---- search ---------------------------------------------------------- */
+
+.wl-search { position: relative; }
+
+.wl-search input[type="search"] {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  font-size: 14px;
+  padding: 11px 13px;
+  width: 100%;
+}
+.wl-search input[type="search"]:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+.wl-search input[type="search"]:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+.wl-results {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  list-style: none;
+  margin: 8px 0 0;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.wl-results li + li { border-top: 1px solid var(--line-soft); }
+
+.wl-results button {
+  align-items: baseline;
+  background: none;
+  border: 0;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  width: 100%;
+}
+.wl-results button:hover:not(:disabled) { background: var(--glass); }
+.wl-results button:disabled { cursor: default; opacity: .5; }
+
+.wl-r-name { flex: 1 1 auto; font-size: 14px; }
+
+.wl-r-meta {
+  color: var(--dim);
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.wl-sme {
+  background: var(--glass);
+  border-radius: 4px;
+  font-size: 10px;
+  font-style: normal;
+  letter-spacing: .03em;
+  padding: 1px 5px;
+}
+
+.wl-r-add {
+  color: var(--accent);
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+.wl-results button:disabled .wl-r-add { color: var(--dim); }
+
+/* ---- the list the reader holds --------------------------------------- */
+
+.wl-held {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+
+.wl-held li {
+  align-items: center;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  display: flex;
+  gap: 8px;
+  padding: 5px 6px 5px 12px;
+}
+
+.wl-h-name { font-size: 13px; }
+.wl-h-ticker { color: var(--dim); font-size: 11px; }
+
+.wl-held button {
+  background: none;
+  border: 0;
+  border-radius: 999px;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+}
+.wl-held button:hover { background: var(--neg-bg); color: var(--neg); }
+
+/* ---- notes ----------------------------------------------------------- */
+
+.wl-note {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 10px 0 0;
+}
+.wl-note a { color: var(--accent); }
+.wl-ok { color: var(--pos); }
+
+.wl-notice {
+  background: var(--neg-bg);
+  border-radius: 8px;
+  color: var(--neg);
+  font-size: 13px;
+  margin: 10px 0 0;
+  padding: 9px 11px;
+}
+
+.wl-connect {
+  background: var(--accent);
+  border: 0;
+  border-radius: 9px;
+  color: var(--accent-ink);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 12px;
+  padding: 10px 16px;
+}
+.wl-connect:hover { filter: brightness(1.06); }
+
+.wl-feed-head {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 26px 0 12px;
+}
+.wl-feed-head .meta { color: var(--dim); font-weight: 400; }
+
+.wl-empty {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 14px;
+  padding: 28px 18px;
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .wl-panel { padding: 14px; }
+  .wl-r-meta { display: none; }
+}

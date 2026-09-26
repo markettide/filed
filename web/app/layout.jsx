@@ -10,6 +10,7 @@ import "./auth.css";
 import "./admin.css";
 import "./pricing.css";
 import "./payment.css";
+import "./watchlist.css";
 
 // Inter for everything functional - it was built for screens and its tabular
 // figures keep columns of rupee amounts from jittering. Instrument Serif only
