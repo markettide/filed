@@ -36,6 +36,7 @@ import mcap
 import rules
 import triage
 import pipeline
+from mongo_mirror import mirror_safely
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KEEP_DAYS = 7
@@ -147,7 +148,9 @@ def redis(url, token, command):
                       json=command, timeout=90)
     if not r.ok:
         raise RuntimeError(f"Redis {r.status_code}: {r.text[:200]}")
-    return r.json().get("result")
+    result = r.json().get("result")
+    mirror_safely(command, "announcements")
+    return result
 
 
 def write_day(url, token, key, rows):

@@ -115,6 +115,32 @@ counters do not reset. Upstash Redis continues to hold the published market
 snapshots, brief PDFs and mailing list. Market-data readers reuse each snapshot
 for one minute to avoid charging Redis repeatedly for identical responses.
 
+### Redis to MongoDB migration
+
+Market-data publishers can dual-write successful Redis `SET` and `DEL`
+operations into MongoDB's isolated `redis_mirror` collection. Add
+`MONGODB_URI` and `MONGODB_DB` to the GitHub repository secrets to enable the
+mirror. Redis remains the source of truth during this stage.
+
+Inventory the market keys without writing anything:
+
+```bash
+python tools/migrate_redis_to_mongo.py
+```
+
+Copy and verify them without deleting or changing Redis:
+
+```bash
+python tools/migrate_redis_to_mongo.py --write --verify
+```
+
+After the initial copy and dual writes have been observed, set
+`MONGO_MIRROR_REQUIRED=1` in the publishing workflows before switching reads.
+That makes any missed MongoDB write fail visibly rather than silently relying
+on Redis. Set `MONGO_MARKET_READS=1` in Vercel only after that observation
+period. MongoDB then becomes the preferred market-data reader, while any
+missing or expired mirror value automatically falls back to Redis.
+
 **Upstash Redis (recommended).** In your Vercel project go to Storage → Upstash
 Redis → Create. It injects `UPSTASH_REDIS_REST_URL` and
 `UPSTASH_REDIS_REST_TOKEN` for you. The mailing list de-duplicates emails

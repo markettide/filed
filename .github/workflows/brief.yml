@@ -47,7 +47,7 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - run: pip install --quiet requests
+      - run: pip install --quiet -r requirements.txt
 
       # The runner image ships Google Chrome. The brief is printed by it
       # rather than a Python PDF library, because the layout is CSS and only
@@ -101,6 +101,8 @@ jobs:
         env:
           KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
           KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_DB: ${{ secrets.MONGODB_DB }}
           NEWSLETTER_DELIVERY: substack
         run: >-
           python -u newsletter.py

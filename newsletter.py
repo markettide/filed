@@ -531,7 +531,10 @@ def _redis(url, token, command):
                       json=command, timeout=90)
     if not r.ok:
         raise RuntimeError(f"Redis {r.status_code}: {r.text[:200]}")
-    return r.json().get("result")
+    result = r.json().get("result")
+    from mongo_mirror import mirror_safely
+    mirror_safely(command, "brief")
+    return result
 
 
 def store(day_iso, pdf_path, url, token):

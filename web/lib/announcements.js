@@ -8,6 +8,7 @@
  */
 
 import { withServerCache } from "./server-cache";
+import { marketMirrorEnabled, readMarketMirror } from "./market-mirror";
 
 const DAYS = 7;
 
@@ -20,11 +21,14 @@ function creds() {
 
 export function configured() {
   const { url, token } = creds();
-  return Boolean(url && token);
+  return marketMirrorEnabled() || Boolean(url && token);
 }
 
 async function redis(command) {
+  const mirrored = await readMarketMirror(command);
+  if (mirrored.hit) return mirrored.result;
   const { url, token } = creds();
+  if (!url || !token) return null;
   const res = await fetch(url, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },

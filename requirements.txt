@@ -1,3 +1,4 @@
 # What the scraper needs. Kept minimal on purpose - everything else is stdlib.
 requests>=2.31
 pypdf>=4.0
+pymongo>=4.10

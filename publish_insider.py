@@ -35,6 +35,7 @@ import requests
 
 import insider
 import mcap
+from mongo_mirror import mirror_safely
 
 TTL_DAYS = 400
 TTL_SECONDS = TTL_DAYS * 24 * 3600
@@ -53,7 +54,9 @@ def redis(url, token, command):
                                     "Content-Type": "application/json"},
                       json=command, timeout=60)
     r.raise_for_status()
-    return r.json().get("result")
+    result = r.json().get("result")
+    mirror_safely(command, "insider")
+    return result
 
 
 def read_day(url, token, key):

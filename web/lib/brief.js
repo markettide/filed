@@ -7,11 +7,14 @@
  */
 
 import { withServerCache } from "./server-cache";
+import { readMarketMirror } from "./market-mirror";
 
 const URL_ = process.env.KV_REST_API_URL;
 const TOKEN = process.env.KV_REST_API_TOKEN;
 
 async function redis(command) {
+  const mirrored = await readMarketMirror(command);
+  if (mirrored.hit) return mirrored.result;
   if (!URL_ || !TOKEN) return null;
   const r = await fetch(URL_, {
     method: "POST",
