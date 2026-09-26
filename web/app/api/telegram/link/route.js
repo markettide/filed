@@ -12,7 +12,7 @@
 
 import { requirePremiumAccess } from "../../../../lib/entitlements";
 import { configured, deepLink, botName } from "../../../../lib/telegram";
-import { setTelegram, configured as dbReady } from "../../../../lib/portfolio";
+import { setTelegram, configured as dbReady } from "../../../../lib/watchlist";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

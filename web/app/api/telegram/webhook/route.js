@@ -23,7 +23,7 @@
 
 import crypto from "node:crypto";
 import { readLinkToken, sendMessage, configured } from "../../../../lib/telegram";
-import { setTelegram, listPortfolio } from "../../../../lib/portfolio";
+import { setTelegram, listWatchlist } from "../../../../lib/watchlist";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -89,7 +89,7 @@ export async function POST(request) {
       linkedAt: new Date(),
     });
 
-    const held = await listPortfolio(email);
+    const held = await listWatchlist(email);
     await sendMessage(
       chat.id,
       held.length

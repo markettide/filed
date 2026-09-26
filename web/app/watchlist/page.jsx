@@ -50,7 +50,7 @@ function crLabel(cr) {
 }
 
 export default function Watchlist() {
-  const [portfolio, setPortfolio] = useState(null);
+  const [watchlist, setWatchlist] = useState(null);
   const [filings, setFilings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -62,10 +62,10 @@ export default function Watchlist() {
   const [searching, setSearching] = useState(false);
   const searchSeq = useRef(0);
 
-  const loadPortfolio = useCallback(async () => {
-    const res = await fetch("/api/portfolio", { cache: "no-store" });
+  const loadWatchlist = useCallback(async () => {
+    const res = await fetch("/api/watchlist", { cache: "no-store" });
     if (res.status === 401) {
-      setPortfolio({ signedOut: true });
+      setWatchlist({ signedOut: true });
       return null;
     }
     const data = await res.json();
@@ -73,7 +73,7 @@ export default function Watchlist() {
       setError(data.error || "Could not load your watchlist.");
       return null;
     }
-    setPortfolio(data);
+    setWatchlist(data);
     return data;
   }, []);
 
@@ -83,7 +83,7 @@ export default function Watchlist() {
       setLoading(true);
       try {
         const [p, f] = await Promise.all([
-          loadPortfolio(),
+          loadWatchlist(),
           // The filings endpoint is Premium, the same as the dashboard. A
           // free reader gets a 403 here, and that is not a failure to hide -
           // it is the answer, and the page says so below rather than
@@ -102,7 +102,7 @@ export default function Watchlist() {
     return () => {
       alive = false;
     };
-  }, [loadPortfolio]);
+  }, [loadWatchlist]);
 
   // Search. Every keystroke cancels the answer to the last one - without the
   // sequence check a slow reply for "rel" can land after a fast one for
@@ -130,7 +130,7 @@ export default function Watchlist() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  const held = portfolio?.stocks || [];
+  const held = watchlist?.stocks || [];
   const heldIsins = useMemo(() => new Set(held.map((s) => s.isin)), [held]);
   const heldKeys = useMemo(() => new Set(held.map((s) => s.key)), [held]);
 
@@ -141,7 +141,7 @@ export default function Watchlist() {
 
   async function add(company) {
     setNotice("");
-    const res = await fetch("/api/portfolio", {
+    const res = await fetch("/api/watchlist", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isin: company.isin }),
@@ -151,36 +151,22 @@ export default function Watchlist() {
       setNotice(data.error || "Could not add that stock.");
       return;
     }
-    setPortfolio((p) => ({ ...p, stocks: data.stocks }));
+    setWatchlist((p) => ({ ...p, stocks: data.stocks }));
     setQuery("");
     setResults([]);
   }
 
   async function remove(isin) {
     setNotice("");
-    const res = await fetch(`/api/portfolio?isin=${encodeURIComponent(isin)}`, {
+    const res = await fetch(`/api/watchlist?isin=${encodeURIComponent(isin)}`, {
       method: "DELETE",
     });
     const data = await res.json();
-    if (res.ok) setPortfolio((p) => ({ ...p, stocks: data.stocks }));
+    if (res.ok) setWatchlist((p) => ({ ...p, stocks: data.stocks }));
   }
 
-  async function connectTelegram() {
-    setNotice("");
-    const res = await fetch("/api/telegram/link");
-    const data = await res.json();
-    if (!res.ok) {
-      setNotice(data.error || "Could not start the Telegram link.");
-      return;
-    }
-    window.open(data.url, "_blank", "noopener");
-    setNotice(
-      "Telegram is opening. Tap Start in the chat, then come back and refresh."
-    );
-  }
-
-  const limit = portfolio?.limit ?? 5;
-  const premium = Boolean(portfolio?.premium);
+  const limit = watchlist?.limit ?? 5;
+  const premium = Boolean(watchlist?.premium);
   const full = held.length >= limit;
 
   return (
@@ -275,43 +261,25 @@ export default function Watchlist() {
             </ul>
           )}
 
-          {portfolio?.parked > 0 && (
+          {watchlist?.parked > 0 && (
             <p className="wl-note">
-              {portfolio.parked} more {portfolio.parked === 1 ? "company is" : "companies are"}{" "}
+              {watchlist.parked} more {watchlist.parked === 1 ? "company is" : "companies are"}{" "}
               saved but not being followed on the free plan.{" "}
               <a href="/pricing">Premium brings them back.</a>
             </p>
           )}
         </section>
 
-        <section className="wl-panel">
+        <section className="wl-panel wl-soon">
           <div className="wl-panel-head">
             <h2>Telegram alerts</h2>
-            {!premium && <span className="wl-badge">Premium</span>}
+            <span className="wl-badge">Coming soon</span>
           </div>
-
-          {!premium ? (
-            <p className="wl-note">
-              Premium sends every filing by these companies to Telegram as it
-              lands — the summary, the key numbers and the PDF, within minutes.{" "}
-              <a href="/pricing">See Premium →</a>
-            </p>
-          ) : portfolio?.telegram?.linked ? (
-            <p className="wl-note wl-ok">
-              Connected
-              {portfolio.telegram.username ? ` as @${portfolio.telegram.username}` : ""}.
-              Alerts are sent as filings arrive.
-            </p>
-          ) : (
-            <>
-              <p className="wl-note">
-                Connect Telegram and we will send each filing as it lands.
-              </p>
-              <button type="button" className="wl-connect" onClick={connectTelegram}>
-                Connect Telegram
-              </button>
-            </>
-          )}
+          <p className="wl-note">
+            Soon we will send every filing by these companies straight to
+            Telegram as it lands — the summary, the key numbers and the PDF,
+            within minutes of the exchange publishing it.
+          </p>
         </section>
 
         <section className="feed">

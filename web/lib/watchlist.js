@@ -1,8 +1,12 @@
 /**
  * A reader's watchlist, and the filings that belong to it.
  *
+ * The Mongo field is still called `portfolio`. Renaming it would orphan
+ * every watchlist already saved under that key, and a migration for
+ * tidiness is not a trade worth making - the reader never sees it.
+ *
  * Stored on the user document rather than in a collection of its own. A
- * portfolio is at most fifty short rows, it is always read with the profile
+ * a watchlist is at most fifty short rows, it is always read with the profile
  * and never without it, and keeping it there means one document, one index and
  * one round trip - the same reasoning that put the newsletter flags there.
  *
@@ -20,11 +24,11 @@
 
 import { MongoClient } from "mongodb";
 
-export const PORTFOLIO_LIMITS = { free: 5, premium: 50 };
+export const WATCHLIST_LIMITS = { free: 5, premium: 50 };
 
 /** How many stocks this reader may hold. */
 export function limitFor(access) {
-  return access?.premium ? PORTFOLIO_LIMITS.premium : PORTFOLIO_LIMITS.free;
+  return access?.premium ? WATCHLIST_LIMITS.premium : WATCHLIST_LIMITS.free;
 }
 
 let clientPromise;
@@ -58,7 +62,7 @@ async function collection() {
 }
 
 /** The stocks this reader watches, oldest first. */
-export async function listPortfolio(email) {
+export async function listWatchlist(email) {
   const users = await collection();
   const row = await users.findOne(
     { email },
@@ -71,9 +75,9 @@ export async function listPortfolio(email) {
  * Add one company. Returns { ok } or { error, code } - never throws for a
  * full watchlist, because that is an ordinary answer and the page shows it.
  */
-export async function addToPortfolio(email, company, limit) {
+export async function addToWatchlist(email, company, limit) {
   const users = await collection();
-  const held = await listPortfolio(email);
+  const held = await listWatchlist(email);
 
   if (held.some((s) => s.isin === company.isin)) {
     return { ok: true, already: true, stocks: held };
@@ -104,10 +108,10 @@ export async function addToPortfolio(email, company, limit) {
 }
 
 /** Remove one company by ISIN. */
-export async function removeFromPortfolio(email, isin) {
+export async function removeFromWatchlist(email, isin) {
   const users = await collection();
   await users.updateOne({ email }, { $pull: { portfolio: { isin } } });
-  return listPortfolio(email);
+  return listWatchlist(email);
 }
 
 /**

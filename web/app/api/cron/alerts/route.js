@@ -1,5 +1,5 @@
 /**
- * Send portfolio alerts for whatever has just been filed.
+ * Send watchlist alerts for whatever has just been filed.
  *
  *   GET /api/cron/alerts?key=<CRON_SECRET>
  *
@@ -25,7 +25,7 @@ import {
   configured as dbReady,
   markAlerted,
   watchersOf,
-} from "../../../../lib/portfolio";
+} from "../../../../lib/watchlist";
 import {
   configured as telegramReady,
   formatFiling,

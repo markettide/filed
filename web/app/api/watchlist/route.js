@@ -1,14 +1,14 @@
 /**
  * A reader's watchlist.
  *
- *   GET    /api/portfolio            -> { stocks, limit, level, telegram }
- *   POST   /api/portfolio  {isin}    -> add one
- *   DELETE /api/portfolio?isin=...   -> remove one
+ *   GET    /api/watchlist            -> { stocks, limit, level, telegram }
+ *   POST   /api/watchlist  {isin}    -> add one
+ *   DELETE /api/watchlist?isin=...   -> remove one
  *
  * Signing in is required, because a watchlist belongs to somebody. Premium is
  * NOT required: the free plan is five stocks, not zero. What Premium changes
  * is the number, and that number is decided in one place - limitFor() in
- * lib/portfolio.js.
+ * lib/watchlist.js.
  *
  * The company is looked up from our own list by ISIN and stored from THAT,
  * never from the request body. Otherwise a reader could post any name and
@@ -18,12 +18,12 @@
 
 import { accessForRequest } from "../../../lib/entitlements";
 import {
-  addToPortfolio,
+  addToWatchlist,
   configured,
   enforceLimit,
   limitFor,
-  removeFromPortfolio,
-} from "../../../lib/portfolio";
+  removeFromWatchlist,
+} from "../../../lib/watchlist";
 import { companyByIsin } from "../../../lib/companies";
 
 export const runtime = "nodejs";
@@ -71,7 +71,7 @@ export async function GET(request) {
       { headers: PRIVATE }
     );
   } catch (error) {
-    console.error("[portfolio] read failed:", error);
+    console.error("[watchlist] read failed:", error);
     return Response.json(
       { error: "Could not load your watchlist." },
       { status: 500, headers: PRIVATE }
@@ -101,7 +101,7 @@ export async function POST(request) {
 
   try {
     const limit = limitFor(access);
-    const result = await addToPortfolio(email, company, limit);
+    const result = await addToWatchlist(email, company, limit);
 
     if (!result.ok) {
       return Response.json(
@@ -125,7 +125,7 @@ export async function POST(request) {
       { headers: PRIVATE }
     );
   } catch (error) {
-    console.error("[portfolio] add failed:", error);
+    console.error("[watchlist] add failed:", error);
     return Response.json(
       { error: "Could not add that stock." },
       { status: 500, headers: PRIVATE }
@@ -147,13 +147,13 @@ export async function DELETE(request) {
   }
 
   try {
-    const stocks = await removeFromPortfolio(email, isin.trim().toUpperCase());
+    const stocks = await removeFromWatchlist(email, isin.trim().toUpperCase());
     return Response.json(
       { ok: true, stocks, limit: limitFor(access) },
       { headers: PRIVATE }
     );
   } catch (error) {
-    console.error("[portfolio] remove failed:", error);
+    console.error("[watchlist] remove failed:", error);
     return Response.json(
       { error: "Could not remove that stock." },
       { status: 500, headers: PRIVATE }

@@ -367,7 +367,7 @@ jobs:
       # Sending nothing twice is the route's own job: it keeps the ids it has
       # already sent on each reader's record, which is what makes it safe for
       # this to fire on all forty-eight runs a day.
-      - name: Send portfolio alerts
+      - name: Send watchlist alerts
         if: always()
         continue-on-error: true
         env:
@@ -375,7 +375,7 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "$CRON_SECRET" ]; then
-            echo "CRON_SECRET is not set - skipping portfolio alerts."
+            echo "CRON_SECRET is not set - skipping watchlist alerts."
             exit 0
           fi
           site="${SITE_URL:-https://www.markettide.in}"
