@@ -175,7 +175,12 @@ export default function Watchlist() {
       setNotice(data.error || "Could not start the Telegram connection.");
       return;
     }
-    window.open(data.url, "_blank", "noopener");
+    // Telegram's t.me link hands desktop browsers to the tg:// protocol. If
+    // Telegram Desktop is not installed, Chrome falls back to telegram.org's
+    // generic home page. Open Telegram Web directly on desktop; mobile keeps
+    // the native deep link where the Start button and token work normally.
+    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    window.open(mobile ? data.url : data.webUrl, "_blank", "noopener");
     setTelegramHelp({
       bot: data.bot,
       command: data.command,
