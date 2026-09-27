@@ -54,31 +54,10 @@ const STALE_MINUTES = 40;
 // about half an hour; a run past this is not slow, it is stuck.
 const STUCK_MINUTES = 55;
 
-/** One Redis command, or null if the store is unreachable or unconfigured. */
+/** One MongoDB market-store command, or null if storage is unavailable. */
 async function redis(command) {
   const mirrored = await readMarketMirror(command);
-  if (mirrored.hit) return mirrored.result;
-  const url =
-    process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-  const token =
-    process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
-  if (!url || !token) return null;
-
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(command),
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    return (await res.json()).result;
-  } catch {
-    return null;
-  }
+  return mirrored.result;
 }
 
 /** Today's date in India, as YYYY-MM-DD. */
@@ -263,7 +242,7 @@ async function trigger(request) {
   //
   // It needs CRON_SECRET and GITHUB_DISPATCH_TOKEN, and neither is set on the
   // Vercel project - "vercel env ls production" lists five variables, all of
-  // them Redis. So it answers 503 to every caller and always has, and the
+  // them in storage. So it answers 503 to every caller and always has, and the
   // half-hourly refresh that does happen comes from scrape.yml dispatching its
   // own successor, not from here.
   //

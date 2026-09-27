@@ -19,8 +19,7 @@ with the DISPATCH_TOKEN secret, and the evidence is in the Actions tab. Using
 the machinery that demonstrably works, rather than the machinery that was
 supposed to.
 
-Needs KV_REST_API_URL, KV_REST_API_TOKEN and DISPATCH_TOKEN, all of which the
-scrape workflow already has.
+Needs MONGODB_URI and DISPATCH_TOKEN, both of which the scrape workflow has.
 """
 
 import datetime
@@ -29,6 +28,9 @@ import os
 import sys
 import urllib.error
 import urllib.request
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from mongo_mirror import execute
 
 # GITHUB_REPOSITORY is always set inside Actions, so the fallback only
 # matters when this is run by hand. The repo moved from It2799/filed to
@@ -47,27 +49,12 @@ def ist_now():
         hours=5, minutes=30)
 
 
-def redis(command):
-    url = os.environ.get("KV_REST_API_URL")
-    token = os.environ.get("KV_REST_API_TOKEN")
-    if not (url and token):
-        return None
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(command).encode(),
-        headers={"Authorization": f"Bearer {token}",
-                 "Content-Type": "application/json"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=20) as r:
-            return json.load(r).get("result")
-    except Exception as e:
-        print(f"  could not reach Redis: {type(e).__name__}: {e}")
-        return None
-
-
 def newest_issue():
-    raw = redis(["GET", "mt:brief:index"])
+    try:
+        raw = execute(["GET", "mt:brief:index"], "brief-watchdog")
+    except Exception as e:
+        print(f"  could not reach MongoDB: {type(e).__name__}: {e}")
+        return None
     if not raw:
         return None
     try:

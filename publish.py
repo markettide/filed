@@ -1,5 +1,5 @@
 """
-Scrape, summarise, and push the result into Redis for the website to serve.
+Scrape, summarise, and store the result in MongoDB for the website to serve.
 
 This is what runs on a schedule in the cloud. Nothing here writes HTML - the
 website reads the data and renders it, so the dashboard is always as fresh as
@@ -11,8 +11,8 @@ the last run.
 
 Credentials come from the environment so nothing sensitive lives in the repo:
 
-    KV_REST_API_URL      from Vercel (Storage tab), or UPSTASH_REDIS_REST_URL
-    KV_REST_API_TOKEN    from Vercel,               or UPSTASH_REDIS_REST_TOKEN
+    MONGODB_URI          MongoDB Atlas connection string
+    MONGODB_DB           optional database name (default: market_tide)
     GROQ_API_KEY         optional, falls back to config.json
     GEMINI_API_KEY       optional, falls back to config.json
 
@@ -36,7 +36,7 @@ import mcap
 import rules
 import triage
 import pipeline
-from mongo_mirror import configured as mongo_configured, mirror_command, read_command
+from mongo_mirror import configured as mongo_configured, execute as mongo_execute
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KEEP_DAYS = 7
@@ -53,12 +53,6 @@ TTL_SECONDS = 60 * 60 * 24 * (KEEP_DAYS + 2)      # a little slack past 7 days
 
 
 # ---------------------------------------------------------------- config
-
-def redis_creds():
-    url = os.environ.get("KV_REST_API_URL") or os.environ.get("UPSTASH_REDIS_REST_URL")
-    tok = os.environ.get("KV_REST_API_TOKEN") or os.environ.get("UPSTASH_REDIS_REST_TOKEN")
-    return url, tok
-
 
 def load_providers():
     """Prefer environment keys (that's how the cloud gets them), else config.json."""
@@ -130,45 +124,21 @@ def load_providers():
     return out
 
 
-# ---------------------------------------------------------------- redis
+# --------------------------------------------------------------- MongoDB
 
 # The "All" tab doesn't need summaries or the long headline, and trimming keeps
-# a busy day's payload well under Upstash's request size limit.
+# a busy day's payload easy to read and update in bounded pieces.
 SLIM_FIELDS = ("id", "exchange", "company", "ticker", "category", "headline",
                # "board" belongs in the slim list too: the SME dashboard has to
                # be able to show the long tail, and that is what this list is.
                "time", "date", "score", "tag", "pdf_url", "mcap", "board")
 
-MAX_BYTES = 700_000        # stay comfortably inside the REST request limit
+MAX_BYTES = 700_000
 
 
 def redis(url, token, command):
-    operation = str(command[0]).upper() if command else ""
-    if operation in {"GET", "MGET"} and mongo_configured():
-        handled, result = read_command(command)
-        if handled:
-            return result
-
-    mongo_result = False
-    if operation in {"SET", "DEL"} and mongo_configured():
-        mongo_result = mirror_command(command, "announcements")
-
-    if url and token:
-        try:
-            r = requests.post(url, headers={"Authorization": f"Bearer {token}",
-                                            "Content-Type": "application/json"},
-                              json=command, timeout=90)
-            if not r.ok:
-                raise RuntimeError(f"Redis {r.status_code}: {r.text[:200]}")
-            return r.json().get("result")
-        except Exception as error:
-            if not mongo_result:
-                raise
-            print(f"Redis transition mirror unavailable: {error}", file=sys.stderr)
-
-    if mongo_result:
-        return "OK" if operation == "SET" else 1
-    raise RuntimeError("Neither MongoDB nor Redis storage is configured")
+    """Compatibility wrapper; all reads and writes now execute in MongoDB."""
+    return mongo_execute(command, "announcements")
 
 
 def write_day(url, token, key, rows):
@@ -280,9 +250,9 @@ def main():
     p.add_argument("--dry-run", action="store_true")
     args = p.parse_args()
 
-    url, token = redis_creds()
-    if not args.dry_run and not (mongo_configured() or (url and token)):
-        sys.exit("No storage configured. Set MONGODB_URI or Redis credentials.")
+    url = token = None
+    if not args.dry_run and not mongo_configured():
+        sys.exit("No storage configured. Set MONGODB_URI.")
 
     provider_list = load_providers()
     print(f"Reading PDFs on {args.read_workers or max(1, args.workers) * 3} threads, summarising on {args.workers}")

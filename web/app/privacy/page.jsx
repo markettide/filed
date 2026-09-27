@@ -69,8 +69,7 @@ export default function Privacy() {
       <p>We use a small number of service providers, each seeing only what they need:</p>
       <ul>
         <li><strong>Vercel</strong> — hosts the website and provides anonymized web analytics.</li>
-        <li><strong>MongoDB</strong> — stores account and subscription details.</li>
-        <li><strong>Upstash</strong> — stores the delivery list and announcement data.</li>
+        <li><strong>MongoDB</strong> — stores account, subscription, delivery-list and announcement data.</li>
         <li><strong>Resend</strong> — delivers verification and Daily Brief emails.</li>
         <li><strong>The payment gateway</strong> — handles your payment.</li>
         <li>

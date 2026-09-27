@@ -1,43 +1,22 @@
 /**
- * Insider trades, read back out of the KV store publish_insider.py writes.
+ * Insider trades, read back out of MongoDB.
  *
  * A filing under SEBI's Regulation 7(2) is a person, a quantity and a price -
  * not prose - so it is kept apart from the announcements and read here.
  */
 
-import { withServerCache } from "./server-cache";
-import { marketMirrorEnabled, readMarketMirror } from "./market-mirror";
-
-const URL_ =
-  process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const TOKEN =
-  process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+import { withServerCache } from "./server-cache.js";
+import { marketMirrorEnabled, readMarketMirror } from "./market-mirror.js";
 
 const DAYS = 7;
 
 export function configured() {
-  return marketMirrorEnabled() || Boolean(URL_ && TOKEN);
+  return marketMirrorEnabled();
 }
 
 async function redis(command) {
   const mirrored = await readMarketMirror(command);
-  if (mirrored.hit) return mirrored.result;
-  if (!URL_ || !TOKEN) return null;
-  try {
-    const r = await fetch(URL_, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(command),
-      cache: "no-store",
-    });
-    if (!r.ok) return null;
-    return (await r.json()).result;
-  } catch {
-    return null;
-  }
+  return mirrored.result;
 }
 
 function parse(raw) {

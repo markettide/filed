@@ -25,7 +25,7 @@ Import the repo at [vercel.com/new](https://vercel.com/new) and set
 Dashboard and Daily Brief use passwordless email verification. Configure these
 private environment variables in Vercel for Production, Preview and Development:
 
-- `MONGODB_URI` — MongoDB connection string used for reader profiles
+- `MONGODB_URI` — MongoDB connection string used for all durable application data
 - `MONGODB_DB` — optional database name; defaults to `market_tide`
 - `AUTH_SECRET` — a long random value used to sign sessions and OTP hashes
 - `RESEND_API_KEY` — current transactional provider key; this will be replaced by Brevo for OTP
@@ -33,7 +33,6 @@ private environment variables in Vercel for Production, Preview and Development:
 - `REPLY_TO_EMAIL` — reply destination; defaults to `market.tide27@gmail.com`
 - `KIT_API_KEY` — Kit V4 API key used to add each explicit newsletter signup to the Kit audience
 - `KIT_FROM_EMAIL` — verified Kit sender address; defaults to `brief@markettide.in`
-- `KV_REST_API_URL` and `KV_REST_API_TOKEN` — Upstash Redis used for market data and briefs
 - `CRON_SECRET` — random value of at least 16 characters; Vercel sends it to the cron route
 - `GITHUB_DISPATCH_TOKEN` — GitHub token with Actions write access, used only to start the PDF worker
 - `ADMIN_PATH_TOKEN` — long random token used in the private `/control/<token>` URL
@@ -110,17 +109,14 @@ statistics.
 ## Where the emails go
 
 MongoDB is the durable user/profile, traffic, market-data, brief, subscriber,
-rate-limit and broadcast-state database. Existing Redis visitor totals are
-captured once as a baseline during deployment so public counters do not reset.
-During the final observation period Upstash remains an optional transition
-mirror; the application no longer requires it for normal operation.
+rate-limit and broadcast-state database. Previously imported visitor totals
+remain as an immutable baseline, and all new traffic is counted in MongoDB.
 
-### Redis to MongoDB migration
+### Completed Redis to MongoDB migration
 
-Market-data publishers can dual-write successful Redis `SET` and `DEL`
-operations into MongoDB's isolated `redis_mirror` collection. Add
-`MONGODB_URI` and `MONGODB_DB` to the GitHub repository secrets to enable the
-mirror. Redis remains the source of truth during this stage.
+Market-data publishers and readers use MongoDB's `redis_mirror` collection.
+The collection name preserves the old key shape so already-migrated data did
+not need to be copied again; it does not imply a live Redis dependency.
 
 Inventory the market keys without writing anything:
 
@@ -134,18 +130,9 @@ Copy and verify them without deleting or changing Redis:
 python tools/migrate_redis_to_mongo.py --write --verify
 ```
 
-After the initial copy and dual writes have been observed, set
-`MONGO_MIRROR_REQUIRED=1` in the publishing workflows before switching reads.
-That makes any missed MongoDB write fail visibly rather than silently relying
-on Redis. Once `MONGODB_URI` is configured, MongoDB becomes the preferred
-market-data reader, while any missing or expired mirror value automatically
-falls back to Redis. Set `MONGO_MARKET_READS=0` in Vercel for an immediate
-Redis-only rollback if required.
-
-**Optional Redis transition mirror.** Existing `UPSTASH_REDIS_REST_URL` and
-`UPSTASH_REDIS_REST_TOKEN` values may remain connected during observation.
-Publishers update them on a best-effort basis, but MongoDB is the source of
-truth and the application continues normally when Redis is unavailable.
+The migration utility is retained only for auditing or rebuilding from an old
+export. Production publishers, website reads, briefs, rate limits and traffic
+tracking require MongoDB and do not contact Redis.
 
 **Any webhook.** Set `WAITLIST_WEBHOOK_URL` to a Google Apps Script, Zapier,
 Make, Slack or Discord endpoint. Each signup is POSTed as JSON.

@@ -4,7 +4,7 @@
  * The cookie carries the reader's identity and an expiry, followed by an HMAC
  * of both. We can therefore tell a cookie we issued from one somebody typed,
  * without storing a single session anywhere - there is no session table to
- * grow, to expire, or to lose when the Redis free tier fills up.
+ * grow, expire, or depend on a separate session store.
  *
  * Signed, not encrypted. Anyone can read their own cookie and see their own
  * email address in it, which is no secret to them. What they cannot do is

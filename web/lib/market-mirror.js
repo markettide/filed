@@ -1,4 +1,4 @@
-/** Read the exact Redis-compatible market snapshot copied into MongoDB. */
+/** Read Market Tide's key/value market snapshot from MongoDB. */
 
 import { MongoClient } from "mongodb";
 
@@ -6,9 +6,7 @@ let clientPromise;
 let warned = false;
 
 export function marketMirrorEnabled() {
-  // MongoDB is now the preferred market-data store whenever it is configured.
-  // An explicit zero remains an instant Redis-only rollback switch.
-  return process.env.MONGO_MARKET_READS !== "0" && Boolean(process.env.MONGODB_URI);
+  return Boolean(process.env.MONGODB_URI);
 }
 
 async function collection() {
@@ -28,8 +26,8 @@ async function collection() {
 }
 
 /**
- * Return { hit, result }. A partial or expired MongoDB result is a miss, so
- * callers can safely execute the original Redis command instead.
+ * Return { hit, result }. Missing keys have the same null value they had in
+ * the previous store; there is deliberately no external fallback.
  */
 export async function readMarketMirror(command) {
   if (!marketMirrorEnabled() || !Array.isArray(command) || !command.length) {
@@ -56,14 +54,13 @@ export async function readMarketMirror(command) {
       { projection: { value: 1 } }
     ).toArray();
     const values = new Map(rows.map((row) => [row._id, row.value]));
-    if (!keys.every((key) => values.has(key))) return { hit: false, result: null };
-    const result = keys.map((key) => values.get(key));
+    const result = keys.map((key) => values.has(key) ? values.get(key) : null);
     return { hit: true, result: operation === "GET" ? result[0] : result };
   } catch (error) {
     if (!warned) {
-      console.warn("[market-mirror] MongoDB read failed; using Redis fallback:", error.message || error);
+      console.warn("[market-storage] MongoDB read failed:", error.message || error);
       warned = true;
     }
-    return { hit: false, result: null };
+    return { hit: true, result: operation === "GET" ? null : keys.map(() => null) };
   }
 }

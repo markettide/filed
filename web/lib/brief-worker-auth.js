@@ -6,8 +6,6 @@ const HEADER = "x-brief-worker";
 function sharedSecret() {
   return process.env.BRIEF_WORKER_SECRET
     || process.env.MONGODB_URI
-    || process.env.KV_REST_API_TOKEN
-    || process.env.UPSTASH_REDIS_REST_TOKEN
     || "";
 }
 

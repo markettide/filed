@@ -70,47 +70,10 @@ async function trafficCollections() {
   return { metrics, visitors, sessions };
 }
 
-async function redisTrafficBaseline() {
-  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
-
-  try {
-    const response = await fetch(`${url}/pipeline`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify([
-        ["GET", "mt:visits:total"],
-        ["PFCOUNT", "mt:visits:uniq"],
-      ]),
-      cache: "no-store",
-    });
-    if (!response.ok) return null;
-    const result = await response.json();
-    if (!Array.isArray(result)) return null;
-    return {
-      total: Math.max(0, Number(result[0]?.result || 0)),
-      unique: Math.max(0, Number(result[1]?.result || 0)),
-    };
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Capture Redis' lifetime counters exactly once. The Redis HyperLogLog cannot
- * expose its member IDs, so its unique count becomes an immutable baseline;
- * MongoDB adds only genuinely new browsers after the cut-over.
- */
+/** Preserve a previously imported baseline and initialise new installs in MongoDB. */
 async function ensureTrafficBaseline(metrics) {
   let current = await metrics.findOne({ _id: TRAFFIC_ID });
   if (current?.baselineCapturedAt) return current;
-
-  const baseline = await redisTrafficBaseline();
-  if (!baseline) return current;
 
   const capturedAt = new Date();
   try {
@@ -118,8 +81,8 @@ async function ensureTrafficBaseline(metrics) {
       { _id: TRAFFIC_ID, baselineCapturedAt: { $exists: false } },
       {
         $set: {
-          baselineTotal: baseline.total,
-          baselineUnique: baseline.unique,
+          baselineTotal: Math.max(0, Number(current?.baselineTotal || 0)),
+          baselineUnique: Math.max(0, Number(current?.baselineUnique || 0)),
           baselineCapturedAt: capturedAt,
           updatedAt: capturedAt,
         },
@@ -136,7 +99,7 @@ async function ensureTrafficBaseline(metrics) {
   return current;
 }
 
-/** Record public traffic without spending Redis commands. */
+/** Record public traffic in MongoDB. */
 export async function recordTraffic({ visitorId, event }) {
   const collections = await trafficCollections();
   if (!collections || !visitorId) return false;

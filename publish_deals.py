@@ -22,12 +22,9 @@ That is also why a pass that finds nothing must never write an empty day.
 import argparse
 import datetime
 import json
-import os
-
-import requests
 
 import deals
-from mongo_mirror import mirror_safely
+from mongo_mirror import configured as mongo_configured, execute as mongo_execute
 
 TTL_DAYS = 400
 TTL_SECONDS = TTL_DAYS * 24 * 3600
@@ -36,22 +33,9 @@ KEEP_DAYS = 90
 DEFAULT_DAYS = 7
 
 
-def creds():
-    url = (os.environ.get("KV_REST_API_URL")
-           or os.environ.get("UPSTASH_REDIS_REST_URL"))
-    tok = (os.environ.get("KV_REST_API_TOKEN")
-           or os.environ.get("UPSTASH_REDIS_REST_TOKEN"))
-    return url, tok
-
-
 def redis(url, token, command):
-    r = requests.post(url, headers={"Authorization": f"Bearer {token}",
-                                    "Content-Type": "application/json"},
-                      json=command, timeout=60)
-    r.raise_for_status()
-    result = r.json().get("result")
-    mirror_safely(command, "deals")
-    return result
+    """Compatibility wrapper; deal storage is MongoDB-only."""
+    return mongo_execute(command, "deals")
 
 
 def read_day(url, token, key):
@@ -199,9 +183,9 @@ def main():
                   f"{r['headline'][:84]}")
         return 0
 
-    url, token = creds()
-    if not (url and token):
-        print("No KV credentials, so nothing was stored.")
+    url = token = None
+    if not mongo_configured():
+        print("No MONGODB_URI, so nothing was stored.")
         return 0
 
     # A pass that found nothing must not erase what an earlier pass found.

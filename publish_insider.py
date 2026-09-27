@@ -27,7 +27,6 @@ into what is already there, keyed on the trade.
 import argparse
 import datetime
 import json
-import os
 import re
 import sys
 
@@ -35,7 +34,7 @@ import requests
 
 import insider
 import mcap
-from mongo_mirror import mirror_safely
+from mongo_mirror import configured as mongo_configured, execute as mongo_execute
 
 TTL_DAYS = 400
 TTL_SECONDS = TTL_DAYS * 24 * 3600
@@ -43,20 +42,9 @@ MAX_BYTES = 900_000
 KEEP_DAYS = 90
 
 
-def creds():
-    url = os.environ.get("KV_REST_API_URL") or os.environ.get("UPSTASH_REDIS_REST_URL")
-    tok = os.environ.get("KV_REST_API_TOKEN") or os.environ.get("UPSTASH_REDIS_REST_TOKEN")
-    return url, tok
-
-
 def redis(url, token, command):
-    r = requests.post(url, headers={"Authorization": f"Bearer {token}",
-                                    "Content-Type": "application/json"},
-                      json=command, timeout=60)
-    r.raise_for_status()
-    result = r.json().get("result")
-    mirror_safely(command, "insider")
-    return result
+    """Compatibility wrapper; insider storage is MongoDB-only."""
+    return mongo_execute(command, "insider")
 
 
 def read_day(url, token, key):
@@ -400,9 +388,9 @@ def main():
                 print(f"  {r['filed_on']}  [{r['exchange']}] "
                       f"{r['company'][:22]:<24}{r['headline'][:70]}")
             return 0
-        url, token = creds()
-        if not (url and token):
-            print("No KV credentials, so nothing was stored.")
+        url = token = None
+        if not mongo_configured():
+            print("No MONGODB_URI, so nothing was stored.")
             return 0
         by_day = {}
         for r in found:
@@ -429,9 +417,9 @@ def main():
                 print(f"  {r['filed_on']}  {r['company'][:22]:<24}"
                       f"{r['headline'][:88]}")
             return 0
-        url, token = creds()
-        if not (url and token):
-            print("No KV credentials, so nothing was stored.")
+        url = token = None
+        if not mongo_configured():
+            print("No MONGODB_URI, so nothing was stored.")
             return 0
         by_day = {}
         for r in found:
@@ -449,9 +437,9 @@ def main():
             print(f"  {r['company'][:24]:<26}{r['headline'][:96]}")
         return 0
 
-    url, token = creds()
-    if not (url and token):
-        print("No KV credentials, so nothing was stored.")
+    url = token = None
+    if not mongo_configured():
+        print("No MONGODB_URI, so nothing was stored.")
         return 0
 
     key = f"mt:insider:{day}"

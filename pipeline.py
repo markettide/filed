@@ -2,8 +2,8 @@
 The scrape-score-summarise pipeline, with no assumptions about where the
 result goes.
 
-run.py uses it to build the local HTML dashboard. publish.py uses it to push
-the same data to Redis so the website can serve it. Keeping this in one place
+run.py uses it to build the local HTML dashboard. publish.py stores the same
+data in MongoDB so the website can serve it. Keeping this in one place
 means the live site and your local dashboard can never drift apart.
 """
 

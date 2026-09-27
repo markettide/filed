@@ -1,5 +1,5 @@
 /**
- * Reads the announcements that publish.py pushed into Redis.
+ * Reads the announcements that publish.py stored in MongoDB.
  *
  * Layout, one key per day so old days expire on their own:
  *   mt:day:2026-08-17  ->  JSON list of that day's important filings
@@ -7,36 +7,18 @@
  *   mt:meta            ->  when it last ran and what it found
  */
 
-import { withServerCache } from "./server-cache";
-import { marketMirrorEnabled, readMarketMirror } from "./market-mirror";
+import { withServerCache } from "./server-cache.js";
+import { marketMirrorEnabled, readMarketMirror } from "./market-mirror.js";
 
 const DAYS = 7;
 
-function creds() {
-  return {
-    url: process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN,
-  };
-}
-
 export function configured() {
-  const { url, token } = creds();
-  return marketMirrorEnabled() || Boolean(url && token);
+  return marketMirrorEnabled();
 }
 
 async function redis(command) {
   const mirrored = await readMarketMirror(command);
-  if (mirrored.hit) return mirrored.result;
-  const { url, token } = creds();
-  if (!url || !token) return null;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(command),
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error(`Redis ${res.status}: ${await res.text()}`);
-  return (await res.json()).result;
+  return mirrored.result;
 }
 
 function parse(raw) {
@@ -131,7 +113,7 @@ const FAMILY = {
 
 const family = (tag) => FAMILY[tag] || null;
 
-// Repair narrowly identifiable stale classifications while the rolling Redis
+// Repair narrowly identifiable stale classifications while the rolling
 // window still contains rows produced by an older set of rules.
 const DEBT_SERVICE = /confirmation of redemption|payment of (interest|principal)|interest payment|commercial paper.{0,30}(maturity|redemption)|redemption.{0,35}(bond|debenture|ncd|ncrps|commercial paper)/i;
 const BUYBACK_FOLLOWUP = /daily (report|disclosure).{0,100}(buy.?back|bought back)|closure of (the )?buy.?back offer/i;

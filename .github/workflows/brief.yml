@@ -55,54 +55,11 @@ jobs:
       - name: Check Chrome is here
         run: google-chrome --version
 
-      # Dead code, kept deliberately and marked as such.
-      #
-      # This guarded against five scheduled slots aiming at the same issue.
-      # Those slots are gone - Vercel Cron owns the clock now and this workflow
-      # is only the PDF worker - so github.event_name is always
-      # workflow_dispatch and this step can never run.
-      #
-      # It stays because a dispatch cannot be told apart from a manual one, so
-      # if duplicate builds ever become a problem the guard is here to switch
-      # on. Rebuilding is harmless in the meantime: newsletter.py replaces the
-      # day rather than adding to it.
-      - name: Is today's issue already out?
-        id: check
-        if: github.event_name == 'schedule'
-        env:
-          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
-          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
-        run: |
-          python - <<'PY' >> "$GITHUB_OUTPUT"
-          import datetime, json, os, sys, urllib.request
-          ist = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=5, minutes=30)
-          today = ist.strftime("%Y-%m-%d")
-          newest = None
-          try:
-              req = urllib.request.Request(
-                  os.environ["KV_REST_API_URL"],
-                  data=json.dumps(["GET", "mt:brief:index"]).encode(),
-                  headers={"Authorization": "Bearer " + os.environ["KV_REST_API_TOKEN"],
-                           "Content-Type": "application/json"})
-              with urllib.request.urlopen(req, timeout=20) as r:
-                  raw = json.load(r).get("result")
-              days = json.loads(raw) if raw else []
-              newest = days[0] if days else None
-          except Exception as e:
-              # stderr, not stdout: stdout is $GITHUB_OUTPUT and it takes
-              # key=value lines only. A note written there is a malformed
-              # output, and the safest failure is to build.
-              print(f"could not read the index: {e}", file=sys.stderr)
-          print(f"done={'yes' if newest == today else 'no'}")
-          PY
-
       - name: Build the brief
-        if: steps.check.outputs.done != 'yes'
         env:
-          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
-          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           MONGODB_DB: ${{ secrets.MONGODB_DB }}
+          BRIEF_WORKER_SECRET: ${{ secrets.BRIEF_WORKER_SECRET }}
           NEWSLETTER_DELIVERY: substack
         run: >-
           python -u newsletter.py

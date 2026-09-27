@@ -1,5 +1,5 @@
 /**
- * The morning brief, read back out of the same KV store the dashboard uses.
+ * The morning brief, read back out of MongoDB.
  *
  * newsletter.py writes each day's PDF as base64 in numbered chunks, exactly
  * the shape publish.py already uses for a heavy day's filings, so there is no
@@ -9,24 +9,9 @@
 import { withServerCache } from "./server-cache.js";
 import { readMarketMirror } from "./market-mirror.js";
 
-const URL_ = process.env.KV_REST_API_URL;
-const TOKEN = process.env.KV_REST_API_TOKEN;
-
 async function redis(command) {
   const mirrored = await readMarketMirror(command);
-  if (mirrored.hit) return mirrored.result;
-  if (!URL_ || !TOKEN) return null;
-  const r = await fetch(URL_, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(command),
-    cache: "no-store",
-  });
-  if (!r.ok) return null;
-  return (await r.json()).result;
+  return mirrored.result;
 }
 
 /** Every day we hold a brief for, newest first. */

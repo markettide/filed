@@ -1,17 +1,15 @@
-"""Redis-compatible string storage backed by MongoDB.
+"""Redis-shaped string storage implemented entirely in MongoDB.
 
-The collection preserves the old key/value/expiry shape so publishers can use
-MongoDB as the source of truth while Redis remains an optional transition
-mirror.
+The key/value/expiry shape is intentionally unchanged so the publishers and
+website can complete the storage migration without rewriting every payload.
+There is no network or runtime dependency on Redis in this module.
 """
 
 import datetime
 import os
-import sys
 
 _client = None
 _collection = None
-_warned = False
 
 
 def configured():
@@ -125,22 +123,22 @@ def read_command(command):
     return True, result[0] if operation == "GET" else result
 
 
-def mirror_safely(command, source="publisher"):
-    """Mirror without risking the still-live Redis publishing path.
+def execute(command, source="publisher"):
+    """Execute the small Redis-compatible command subset in MongoDB.
 
-    Set MONGO_MIRROR_REQUIRED=1 after verification to make a MongoDB mirror
-    failure fail the publisher instead of warning once and continuing.
+    Publishers only use GET, MGET, SET and DEL. Keeping their return values
+    compatible makes the final cutover small and, more importantly, preserves
+    the already-migrated data in ``redis_mirror``.
     """
-    global _warned
-    try:
-        return mirror_command(command, source)
-    except Exception as error:
-        if os.environ.get("MONGO_MIRROR_REQUIRED") == "1":
-            raise
-        if not _warned:
-            print(
-                f"MongoDB mirror unavailable ({type(error).__name__}); Redis publish continues",
-                file=sys.stderr,
-            )
-            _warned = True
-        return False
+    if not configured():
+        raise RuntimeError("MONGODB_URI is required")
+    handled, result = read_command(command)
+    if handled:
+        return result
+    operation = str(command[0]).upper() if command else ""
+    if mirror_command(command, source):
+        if operation == "SET":
+            return "OK"
+        if operation == "DEL":
+            return max(0, len(command) - 1)
+    raise ValueError(f"Unsupported MongoDB storage command: {operation or 'empty'}")
