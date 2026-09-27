@@ -112,6 +112,11 @@ MongoDB is the durable user/profile, traffic, market-data, brief, subscriber,
 rate-limit and broadcast-state database. Previously imported visitor totals
 remain as an immutable baseline, and all new traffic is counted in MongoDB.
 
+Watchlists are stored inside each reader's MongoDB `users` document under the
+legacy-compatible `portfolio` field. Adding and removing companies, plan-limit
+parking/restoration, Telegram links and alert-delivery history do not use
+Redis or Upstash.
+
 ### Completed Redis to MongoDB migration
 
 Market-data publishers and readers use MongoDB's `redis_mirror` collection.

@@ -100,11 +100,40 @@ export async function addToWatchlist(email, company, limit) {
     addedAt: new Date(),
   };
 
-  // $addToSet cannot be used here - two entries differing only by addedAt are
-  // different objects to Mongo, so a double click would store the stock
-  // twice. The isin check above plus $push is the honest version.
-  await users.updateOne({ email }, { $push: { portfolio: entry } });
-  return { ok: true, stocks: [...held, entry] };
+  // Make the check and the write one MongoDB operation. The earlier read is
+  // useful for the ordinary duplicate/full answers, but it cannot protect
+  // against two browser requests arriving together. This filter does: only
+  // one request can add a given ISIN, and no concurrent request can take the
+  // array beyond the reader's plan limit.
+  const write = await users.updateOne(
+    {
+      email,
+      "portfolio.isin": { $ne: company.isin },
+      $expr: {
+        $lt: [
+          { $size: { $ifNull: ["$portfolio", []] } },
+          limit,
+        ],
+      },
+    },
+    { $push: { portfolio: entry } }
+  );
+
+  // Always return MongoDB's actual post-write state. It may differ from the
+  // first read if another request added or removed a company concurrently.
+  const stocks = await listWatchlist(email);
+  if (write.modifiedCount === 1) return { ok: true, stocks };
+  if (stocks.some((s) => s.isin === company.isin)) {
+    return { ok: true, already: true, stocks };
+  }
+  if (stocks.length >= limit) {
+    return { ok: false, code: "limit_reached", limit, stocks };
+  }
+
+  // A signed-in reader normally has a profile. If it vanished between the
+  // entitlement check and this write, fail explicitly instead of pretending
+  // the free-plan limit was reached.
+  throw new Error("Watchlist profile disappeared before the update");
 }
 
 /** Remove one company by ISIN. */
