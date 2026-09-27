@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 
 const { newTelegramLinkToken } = await import("../lib/operational-state.js");
-const { formatFiling } = await import("../lib/telegram.js");
+process.env.TELEGRAM_BOT_NAME = "@@Markettide_bot";
+const { botName, formatFiling } = await import("../lib/telegram.js");
+
+assert.equal(botName(), "Markettide_bot");
 
 // Telegram permits only A-Z, a-z, 0-9, underscore and hyphen in /start
 // parameters, with a hard 64-character limit.

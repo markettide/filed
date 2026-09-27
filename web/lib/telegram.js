@@ -33,7 +33,12 @@ export function configured() {
 }
 
 export function botName() {
-  return process.env.TELEGRAM_BOT_NAME || "";
+  // Accept either BotFather's @name form or the bare username. Keeping the
+  // normalisation here prevents malformed t.me and Telegram Web URLs such as
+  // #@@Markettide_bot when an environment value includes the leading @.
+  return String(process.env.TELEGRAM_BOT_NAME || "")
+    .trim()
+    .replace(/^@+/, "");
 }
 
 /**
