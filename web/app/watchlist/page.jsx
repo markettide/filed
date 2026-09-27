@@ -5,6 +5,49 @@ import Nav from "../Nav";
 import AuthGate from "../AuthGate";
 import FilingCard from "../FilingCard";
 
+function TelegramLogin({ bot, onConnected, onError }) {
+  const host = useRef(null);
+
+  useEffect(() => {
+    if (!bot || !host.current) return;
+    const callbackName = "__marketTideTelegramConnected";
+    const target = host.current;
+
+    window[callbackName] = async (telegramUser) => {
+      try {
+        const response = await fetch("/api/telegram/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(telegramUser),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not connect Telegram.");
+        onConnected(data);
+      } catch (error) {
+        onError(error.message || "Could not connect Telegram.");
+      }
+    };
+
+    target.replaceChildren();
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://telegram.org/js/telegram-widget.js?22";
+    script.setAttribute("data-telegram-login", bot);
+    script.setAttribute("data-size", "large");
+    script.setAttribute("data-radius", "8");
+    script.setAttribute("data-request-access", "write");
+    script.setAttribute("data-onauth", `window.${callbackName}(user)`);
+    target.appendChild(script);
+
+    return () => {
+      delete window[callbackName];
+      target.replaceChildren();
+    };
+  }, [bot, onConnected, onError]);
+
+  return <div className="wl-telegram-login" ref={host} />;
+}
+
 /**
  * The reader's own companies, and what they have filed.
  *
@@ -55,7 +98,6 @@ export default function Watchlist() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [telegramHelp, setTelegramHelp] = useState(null);
   const [feedLocked, setFeedLocked] = useState(false);
 
   const [query, setQuery] = useState("");
@@ -166,40 +208,16 @@ export default function Watchlist() {
     if (res.ok) setWatchlist((p) => ({ ...p, stocks: data.stocks }));
   }
 
-  async function connectTelegram() {
-    setNotice("");
-    setTelegramHelp(null);
-    const res = await fetch("/api/telegram/link", { cache: "no-store" });
-    const data = await res.json();
-    if (!res.ok) {
-      setNotice(data.error || "Could not start the Telegram connection.");
-      return;
-    }
-    // Telegram's t.me link hands desktop browsers to the tg:// protocol. If
-    // Telegram Desktop is not installed, Chrome falls back to telegram.org's
-    // generic home page. Open Telegram Web directly on desktop; mobile keeps
-    // the native deep link where the Start button and token work normally.
-    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    window.open(mobile ? data.url : data.webUrl, "_blank", "noopener");
-    setTelegramHelp({
-      bot: data.bot,
-      command: data.command,
-      webUrl: data.webUrl,
-    });
+  const telegramConnected = useCallback(async (data) => {
+    await loadWatchlist();
     setNotice(
-      "Telegram is opening. If you have the app, tap Start in the chat. Otherwise use the Telegram Web option below."
+      `Telegram connected${data.username ? ` as @${data.username}` : ""}. A confirmation message was sent.`
     );
-  }
+  }, [loadWatchlist]);
 
-  async function copyTelegramCommand() {
-    if (!telegramHelp?.command) return;
-    try {
-      await navigator.clipboard.writeText(telegramHelp.command);
-      setNotice("Connection command copied. Paste it into the bot chat and send.");
-    } catch {
-      setNotice(`Send this command to @${telegramHelp.bot}: ${telegramHelp.command}`);
-    }
-  }
+  const telegramError = useCallback((message) => {
+    setNotice(message);
+  }, []);
 
   async function disconnectTelegram() {
     setNotice("");
@@ -358,43 +376,15 @@ export default function Watchlist() {
           ) : (
             <>
               <p className="wl-note">
-                Connect Telegram and we will send each new filing as it lands.
+                Approve once with Telegram and we will send each new filing as
+                it lands. You do not need to paste a command or press Start.
               </p>
-              <button
-                type="button"
-                className="wl-connect"
-                onClick={connectTelegram}
-              >
-                Connect Telegram
-              </button>
+              <TelegramLogin
+                bot={watchlist?.telegramBot}
+                onConnected={telegramConnected}
+                onError={telegramError}
+              />
             </>
-          )}
-
-          {premium && telegramHelp && !watchlist?.telegram?.linked && (
-            <div className="wl-telegram-help">
-              <p className="wl-note">
-                Using Telegram in your browser? Open @{telegramHelp.bot}, then
-                paste and send the one-time command below.
-              </p>
-              <code>{telegramHelp.command}</code>
-              <div className="wl-telegram-actions">
-                <a
-                  className="wl-connect"
-                  href={telegramHelp.webUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open Telegram Web
-                </a>
-                <button
-                  type="button"
-                  className="wl-connect"
-                  onClick={copyTelegramCommand}
-                >
-                  Copy connection command
-                </button>
-              </div>
-            </div>
           )}
         </section>
 

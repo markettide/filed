@@ -3,15 +3,11 @@
  *
  * Three moving parts, and only the first needs explaining:
  *
- * 1. LINKING. We cannot message a reader until they have messaged the bot -
- *    Telegram requires that, and it is the reason a "just paste your username"
- *    flow cannot work. So the site hands out a deep link,
- *    https://t.me/<bot>?start=<token>, the reader taps it, Telegram sends the
- *    bot "/start <token>", and the webhook below matches the token back to
- *    the account and stores the chat id. The token is a signed, short-lived
- *    statement that a particular signed-in reader asked for this - it is not
- *    a secret to guard, it is a claim to verify, which is the same reasoning
- *    as the session cookie.
+ * 1. LINKING. A username alone is not permission to message somebody. The
+ *    primary path uses Telegram Login with request-access="write"; Telegram
+ *    asks the reader to approve messages and signs the returned Telegram id.
+ *    verifyLoginPayload checks that signature before the id is stored. The
+ *    older /start token path remains available to the webhook as a fallback.
  *
  * 2. SENDING. One HTTP call, no npm package.
  *
@@ -25,6 +21,7 @@ import {
   consumeTelegramLink,
   createTelegramLink,
 } from "./operational-state.js";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 const API = "https://api.telegram.org";
 
@@ -39,6 +36,57 @@ export function botName() {
   return String(process.env.TELEGRAM_BOT_NAME || "")
     .trim()
     .replace(/^@+/, "");
+}
+
+/**
+ * Verify the signed user record returned by Telegram's Login Widget.
+ *
+ * This is what makes the one-click connection safe: the browser cannot
+ * choose a Telegram id for another person because every field is covered by
+ * an HMAC derived from the bot token.  Old responses are rejected as well so
+ * a captured login cannot be replayed later.
+ */
+export function verifyLoginPayload(payload, now = Date.now()) {
+  if (!payload || typeof payload !== "object") return null;
+
+  const token = String(process.env.TELEGRAM_BOT_TOKEN || "");
+  const suppliedHash = String(payload.hash || "").toLowerCase();
+  const id = String(payload.id || "").trim();
+  const authDate = Number(payload.auth_date);
+  if (!token || !id || !/^\d+$/.test(id) || !/^[a-f0-9]{64}$/.test(suppliedHash)) {
+    return null;
+  }
+  if (!Number.isFinite(authDate)) return null;
+
+  const ageSeconds = Math.floor(now / 1000) - authDate;
+  if (ageSeconds < -60 || ageSeconds > 10 * 60) return null;
+
+  const allowed = [
+    "auth_date",
+    "first_name",
+    "id",
+    "last_name",
+    "photo_url",
+    "username",
+  ];
+  const checkString = allowed
+    .filter((key) => payload[key] !== undefined && payload[key] !== null)
+    .map((key) => `${key}=${String(payload[key])}`)
+    .sort()
+    .join("\n");
+  const secret = createHash("sha256").update(token).digest();
+  const expected = createHmac("sha256", secret).update(checkString).digest();
+  const supplied = Buffer.from(suppliedHash, "hex");
+  if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+    return null;
+  }
+
+  return {
+    chatId: id,
+    username: String(payload.username || "").trim().replace(/^@+/, "") || null,
+    firstName: String(payload.first_name || "").trim() || null,
+    lastName: String(payload.last_name || "").trim() || null,
+  };
 }
 
 /**

@@ -68,6 +68,7 @@ export async function GET(request) {
         level: access.level,
         premium: access.premium,
         telegramAvailable: telegramConfigured() && Boolean(telegramBotName()),
+        telegramBot: telegramBotName(),
         telegram: profile?.telegram
           ? { linked: true, username: profile.telegram.username || null }
           : { linked: false },

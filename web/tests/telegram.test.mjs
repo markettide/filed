@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 
 const { newTelegramLinkToken } = await import("../lib/operational-state.js");
 process.env.TELEGRAM_BOT_NAME = "@@Markettide_bot";
-const { botName, formatFiling } = await import("../lib/telegram.js");
+process.env.TELEGRAM_BOT_TOKEN = "123456:test-token";
+const { botName, formatFiling, verifyLoginPayload } = await import("../lib/telegram.js");
 
 assert.equal(botName(), "Markettide_bot");
 
@@ -30,5 +31,31 @@ assert.match(message, /Results &lt;Q2&gt;/);
 assert.match(message, /Profit &gt; last year/);
 assert.match(message, /Read the filing/);
 assert.doesNotMatch(message, /<Q2>/);
+
+const { createHash, createHmac } = await import("node:crypto");
+const authDate = Math.floor(Date.now() / 1000);
+const login = {
+  id: "123456789",
+  first_name: "Test",
+  username: "market_reader",
+  auth_date: authDate,
+};
+const checkString = Object.entries(login)
+  .map(([key, value]) => `${key}=${value}`)
+  .sort()
+  .join("\n");
+const secret = createHash("sha256").update(process.env.TELEGRAM_BOT_TOKEN).digest();
+login.hash = createHmac("sha256", secret).update(checkString).digest("hex");
+assert.deepEqual(verifyLoginPayload(login), {
+  chatId: "123456789",
+  username: "market_reader",
+  firstName: "Test",
+  lastName: null,
+});
+assert.equal(verifyLoginPayload({ ...login, id: "987654321" }), null);
+assert.equal(
+  verifyLoginPayload({ ...login, auth_date: authDate - 601 }),
+  null
+);
 
 console.log("Telegram watchlist integration: all checks pass");

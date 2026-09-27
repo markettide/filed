@@ -237,6 +237,11 @@
 }
 .wl-connect:hover { filter: brightness(1.06); }
 
+.wl-telegram-login {
+  min-height: 42px;
+  margin-top: 12px;
+}
+
 .wl-feed-head {
   font-size: 15px;
   font-weight: 600;
