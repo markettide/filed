@@ -238,28 +238,56 @@ export default function Watchlist() {
   const limit = watchlist?.limit ?? 5;
   const premium = Boolean(watchlist?.premium);
   const full = held.length >= limit;
+  const telegramLinked = Boolean(watchlist?.telegram?.linked);
+  const noticePositive =
+    notice.startsWith("Telegram connected") || notice === "Telegram disconnected.";
 
   return (
     <>
       <Nav />
       <AuthGate>
         <div className="dash-shell">
-          <header className="dash-top">
-            <h1>Your watchlist</h1>
+          <header className="dash-top wl-hero">
+            <div className="wl-eyebrow">Your personal filing radar</div>
+            <h1>Watch the companies that matter to you</h1>
             <p className="wl-blurb">
-              Follow companies and see only their filings — the summary, the
-              numbers and the original PDF, the same as the dashboard.
+              Keep one focused feed for company filings, plain-English
+              summaries and instant Telegram alerts.
             </p>
+            <div className="wl-overview" aria-label="Watchlist overview">
+              <div>
+                <span className="wl-overview-icon wl-overview-icon--blue">◎</span>
+                <p><b>{held.length}</b><span>Companies followed</span></p>
+              </div>
+              <div>
+                <span className="wl-overview-icon wl-overview-icon--violet">↗</span>
+                <p><b>{mine.length}</b><span>Updates in 7 days</span></p>
+              </div>
+              <div>
+                <span className={`wl-overview-icon ${telegramLinked ? "wl-overview-icon--green" : ""}`}>✦</span>
+                <p>
+                  <b>{telegramLinked ? "On" : "Off"}</b>
+                  <span>Telegram alerts</span>
+                </p>
+              </div>
+            </div>
           </header>
 
-        <section className="wl-panel">
+        {notice && (
+          <p className={`wl-notice ${noticePositive ? "wl-notice--success" : ""}`}>
+            <span aria-hidden="true">{noticePositive ? "✓" : "!"}</span>
+            {notice}
+          </p>
+        )}
+
+        <div className="wl-setup-grid">
+        <section className="wl-panel wl-companies-panel">
           <div className="wl-panel-head">
-            <h2>
-              Companies{" "}
-              <span className="wl-count">
-                {held.length} of {limit}
-              </span>
-            </h2>
+            <div>
+              <span className="wl-section-kicker">Watchlist</span>
+              <h2>Companies</h2>
+            </div>
+            <span className="wl-count">{held.length} / {limit}</span>
             {!premium && (
               <a className="wl-upgrade" href="/pricing">
                 Premium holds 50 →
@@ -267,11 +295,16 @@ export default function Watchlist() {
             )}
           </div>
 
+          <div className="wl-capacity" aria-label={`${held.length} of ${limit} companies followed`}>
+            <span style={{ width: `${Math.min(100, (held.length / limit) * 100)}%` }} />
+          </div>
+
           <div className="wl-search">
+            <span className="wl-search-icon" aria-hidden="true">⌕</span>
             <input
               type="search"
               value={query}
-              placeholder="Search a company — try “reliance” or “INFY”"
+              placeholder="Search by company or ticker"
               onChange={(e) => setQuery(e.target.value)}
               disabled={full}
               aria-label="Search for a company to follow"
@@ -311,14 +344,17 @@ export default function Watchlist() {
             )}
           </div>
 
-          {notice && <p className="wl-notice">{notice}</p>}
-
           {held.length > 0 && (
             <ul className="wl-held">
               {held.map((s) => (
                 <li key={s.isin}>
-                  <span className="wl-h-name">{s.name}</span>
-                  <span className="wl-h-ticker">{s.ticker}</span>
+                  <span className="wl-company-mark" aria-hidden="true">
+                    {(s.ticker || s.name || "?").slice(0, 1)}
+                  </span>
+                  <span className="wl-company-copy">
+                    <span className="wl-h-name">{s.name}</span>
+                    <span className="wl-h-ticker">{s.ticker} · Following</span>
+                  </span>
                   <button
                     type="button"
                     onClick={() => remove(s.isin)}
@@ -340,9 +376,12 @@ export default function Watchlist() {
           )}
         </section>
 
-        <section className="wl-panel">
+        <section className={`wl-panel wl-alert-panel ${telegramLinked ? "is-connected" : ""}`}>
           <div className="wl-panel-head">
-            <h2>Telegram alerts</h2>
+            <div>
+              <span className="wl-section-kicker">Delivery</span>
+              <h2>Telegram alerts</h2>
+            </div>
             {!premium && <span className="wl-badge">Premium</span>}
           </div>
 
@@ -357,24 +396,28 @@ export default function Watchlist() {
               Telegram setup is not active on this deployment yet.
             </p>
           ) : watchlist?.telegram?.linked ? (
-            <>
-              <p className="wl-note wl-ok">
-                Connected
-                {watchlist.telegram.username
-                  ? ` as @${watchlist.telegram.username}`
-                  : ""}
-                . Alerts are sent as new filings arrive.
-              </p>
+            <div className="wl-connected-card">
+              <div className="wl-connected-icon" aria-hidden="true">✓</div>
+              <div className="wl-connected-copy">
+                <strong>Alerts are active</strong>
+                <span>
+                  {watchlist.telegram.username
+                    ? `Connected as @${watchlist.telegram.username}`
+                    : "Telegram connected"}
+                </span>
+                <small>New filings from followed companies will arrive automatically.</small>
+              </div>
               <button
                 type="button"
-                className="wl-connect"
+                className="wl-disconnect"
                 onClick={disconnectTelegram}
               >
-                Disconnect Telegram
+                Disconnect
               </button>
-            </>
+            </div>
           ) : (
             <>
+              <div className="wl-telegram-illustration" aria-hidden="true">➤</div>
               <p className="wl-note">
                 Approve once with Telegram and we will send each new filing as
                 it lands. You do not need to paste a command or press Start.
@@ -387,12 +430,16 @@ export default function Watchlist() {
             </>
           )}
         </section>
+        </div>
 
         <section className="feed">
-          <h2 className="wl-feed-head">
-            Their filings
-            <span className="meta"> · last 7 days</span>
-          </h2>
+          <div className="wl-feed-head">
+            <div>
+              <span className="wl-section-kicker">Latest activity</span>
+              <h2>Their filings <span>{mine.length}</span></h2>
+              <p>Important filings from your companies during the last seven days.</p>
+            </div>
+          </div>
 
           {loading && <p className="wl-note">Loading…</p>}
           {error && <p className="wl-notice">{error}</p>}
@@ -414,15 +461,19 @@ export default function Watchlist() {
           )}
 
           {!loading && !feedLocked && !held.length && (
-            <p className="wl-empty">
-              Add a company above and its filings will appear here.
-            </p>
+            <div className="wl-empty">
+              <span aria-hidden="true">＋</span>
+              <b>Build your watchlist</b>
+              <p>Add a company above and its latest filings will appear here.</p>
+            </div>
           )}
 
           {!loading && !feedLocked && held.length > 0 && !mine.length && (
-            <p className="wl-empty">
-              Nothing filed by these companies in the last seven days.
-            </p>
+            <div className="wl-empty">
+              <span aria-hidden="true">✓</span>
+              <b>You’re all caught up</b>
+              <p>No new filings from these companies in the last seven days.</p>
+            </div>
           )}
 
           {mine.map((it) => (
