@@ -53,6 +53,11 @@ export async function findByEmail(email) {
         premiumOrderIds: 1,
         trialStartedAt: 1,
         trialEndsAt: 1,
+        // The watchlist endpoint uses the same profile read to render alert
+        // status. Keep these in the projection or a successfully linked bot
+        // is stored in MongoDB but the page still appears disconnected.
+        telegram: 1,
+        alertsEnabled: 1,
       },
     }
   );
