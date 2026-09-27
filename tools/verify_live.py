@@ -57,9 +57,7 @@ BRIEF_WORKER_PURPOSE = b"market-tide-brief-worker-v1"
 def worker_headers():
     headers = {"User-Agent": "market-tide-verify"}
     secret = (os.environ.get("BRIEF_WORKER_SECRET")
-              or os.environ.get("MONGODB_URI")
-              or os.environ.get("KV_REST_API_TOKEN")
-              or os.environ.get("UPSTASH_REDIS_REST_TOKEN"))
+              or os.environ.get("MONGODB_URI"))
     if secret:
         headers["X-Brief-Worker"] = hmac.new(
             secret.encode(), BRIEF_WORKER_PURPOSE, hashlib.sha256
@@ -109,8 +107,7 @@ def main():
             print(f"  [FAIL] the API refused this check: {e}")
             print("         The dashboard API is Premium-only. This check "
                   "signs X-Brief-Worker")
-            print("         with BRIEF_WORKER_SECRET, MONGODB_URI or "
-                  "KV_REST_API_TOKEN - whichever")
+            print("         with BRIEF_WORKER_SECRET or MONGODB_URI")
             print("         the server picks first. One of those has to "
                   "reach this step, and")
             print("         it has to be the SAME one the deployment uses.")
