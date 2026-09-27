@@ -122,7 +122,7 @@ Redis or Upstash.
 Create a bot with Telegram's `@BotFather`, then set `TELEGRAM_BOT_TOKEN`,
 `TELEGRAM_BOT_NAME` (without `@`) and a random `TELEGRAM_WEBHOOK_SECRET` in
 Vercel. In `@BotFather`, run `/setdomain`, select the bot and enter
-`markettide.in`. This enables the one-click Login Widget with messaging
+`www.markettide.in` (the canonical production host). This enables the one-click Login Widget with messaging
 permission; readers do not need to send `/start`. Register the production
 webhook once:
 
