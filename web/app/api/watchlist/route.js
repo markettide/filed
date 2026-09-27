@@ -25,6 +25,10 @@ import {
   removeFromWatchlist,
 } from "../../../lib/watchlist";
 import { companyByIsin } from "../../../lib/companies";
+import {
+  botName as telegramBotName,
+  configured as telegramConfigured,
+} from "../../../lib/telegram";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,6 +67,7 @@ export async function GET(request) {
         limit,
         level: access.level,
         premium: access.premium,
+        telegramAvailable: telegramConfigured() && Boolean(telegramBotName()),
         telegram: profile?.telegram
           ? { linked: true, username: profile.telegram.username || null }
           : { linked: false },

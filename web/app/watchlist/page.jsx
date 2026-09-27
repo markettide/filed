@@ -165,6 +165,36 @@ export default function Watchlist() {
     if (res.ok) setWatchlist((p) => ({ ...p, stocks: data.stocks }));
   }
 
+  async function connectTelegram() {
+    setNotice("");
+    const res = await fetch("/api/telegram/link", { cache: "no-store" });
+    const data = await res.json();
+    if (!res.ok) {
+      setNotice(data.error || "Could not start the Telegram connection.");
+      return;
+    }
+    window.open(data.url, "_blank", "noopener");
+    setNotice(
+      "Telegram is opening. Tap Start in the chat, then return here and refresh."
+    );
+  }
+
+  async function disconnectTelegram() {
+    setNotice("");
+    const res = await fetch("/api/telegram/link", { method: "DELETE" });
+    const data = await res.json();
+    if (!res.ok) {
+      setNotice(data.error || "Could not disconnect Telegram.");
+      return;
+    }
+    setWatchlist((current) => ({
+      ...current,
+      telegram: { linked: false },
+      alertsEnabled: false,
+    }));
+    setNotice("Telegram disconnected.");
+  }
+
   const limit = watchlist?.limit ?? 5;
   const premium = Boolean(watchlist?.premium);
   const full = held.length >= limit;
@@ -270,16 +300,53 @@ export default function Watchlist() {
           )}
         </section>
 
-        <section className="wl-panel wl-soon">
+        <section className="wl-panel">
           <div className="wl-panel-head">
             <h2>Telegram alerts</h2>
-            <span className="wl-badge">Coming soon</span>
+            {!premium && <span className="wl-badge">Premium</span>}
           </div>
-          <p className="wl-note">
-            Soon we will send every filing by these companies straight to
-            Telegram as it lands — the summary, the key numbers and the PDF,
-            within minutes of the exchange publishing it.
-          </p>
+
+          {!premium ? (
+            <p className="wl-note">
+              Premium sends every filing by these companies to Telegram as it
+              lands — the summary, key numbers and PDF. {" "}
+              <a href="/pricing">See Premium →</a>
+            </p>
+          ) : !watchlist?.telegramAvailable ? (
+            <p className="wl-note">
+              Telegram setup is not active on this deployment yet.
+            </p>
+          ) : watchlist?.telegram?.linked ? (
+            <>
+              <p className="wl-note wl-ok">
+                Connected
+                {watchlist.telegram.username
+                  ? ` as @${watchlist.telegram.username}`
+                  : ""}
+                . Alerts are sent as new filings arrive.
+              </p>
+              <button
+                type="button"
+                className="wl-connect"
+                onClick={disconnectTelegram}
+              >
+                Disconnect Telegram
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="wl-note">
+                Connect Telegram and we will send each new filing as it lands.
+              </p>
+              <button
+                type="button"
+                className="wl-connect"
+                onClick={connectTelegram}
+              >
+                Connect Telegram
+              </button>
+            </>
+          )}
         </section>
 
         <section className="feed">

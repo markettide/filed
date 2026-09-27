@@ -117,6 +117,22 @@ legacy-compatible `portfolio` field. Adding and removing companies, plan-limit
 parking/restoration, Telegram links and alert-delivery history do not use
 Redis or Upstash.
 
+### Telegram watchlist alerts
+
+Create a bot with Telegram's `@BotFather`, then set `TELEGRAM_BOT_TOKEN`,
+`TELEGRAM_BOT_NAME` (without `@`) and a random `TELEGRAM_WEBHOOK_SECRET` in
+Vercel. Register the production webhook once:
+
+```bash
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
+  -d url=https://www.markettide.in/api/telegram/webhook \
+  -d secret_token=<TELEGRAM_WEBHOOK_SECRET>
+```
+
+Set the same `CRON_SECRET` in Vercel and the GitHub repository. The scrape
+workflow calls `/api/cron/alerts` after publishing; the route reads watchlists,
+link tokens and delivery history only from MongoDB.
+
 ### Completed Redis to MongoDB migration
 
 Market-data publishers and readers use MongoDB's `redis_mirror` collection.

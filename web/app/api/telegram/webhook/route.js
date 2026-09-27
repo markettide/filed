@@ -65,7 +65,7 @@ export async function POST(request) {
   }
 
   const token = text.slice("/start".length).trim();
-  const email = token ? readLinkToken(token) : null;
+  const email = token ? await readLinkToken(token) : null;
 
   if (!email) {
     try {

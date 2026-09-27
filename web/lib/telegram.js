@@ -21,10 +21,12 @@
  *    asking that.
  */
 
-import crypto from "node:crypto";
+import {
+  consumeTelegramLink,
+  createTelegramLink,
+} from "./operational-state.js";
 
 const API = "https://api.telegram.org";
-const LINK_TTL_SECONDS = 15 * 60;
 
 export function configured() {
   return Boolean(process.env.TELEGRAM_BOT_TOKEN);
@@ -34,60 +36,28 @@ export function botName() {
   return process.env.TELEGRAM_BOT_NAME || "";
 }
 
-function sign(payload) {
-  return crypto
-    .createHmac("sha256", process.env.AUTH_SECRET)
-    .update(`tg:${payload}`)
-    .digest("base64url");
-}
-
 /**
  * A token proving this reader asked to link, good for fifteen minutes.
  *
  * Telegram's start parameter allows only [A-Za-z0-9_-] and 64 characters, so
- * the email cannot travel inside it. It carries a random id instead, and the
- * webhook looks the reader up by it.
+ * the email does not travel inside it. MongoDB stores the email behind a
+ * random 32-character token and the webhook consumes that token once.
  */
-export function makeLinkToken(email) {
-  if (!process.env.AUTH_SECRET) return null;
-  const issued = Math.floor(Date.now() / 1000);
-  const body = Buffer.from(`${email}|${issued}`).toString("base64url");
-  return `${body}.${sign(body)}`;
+export async function makeLinkToken(email) {
+  return createTelegramLink(email);
 }
 
 /** The reader a token belongs to, or null if it is not one of ours. */
-export function readLinkToken(token) {
-  if (!token || !process.env.AUTH_SECRET) return null;
-
-  const dot = token.lastIndexOf(".");
-  if (dot < 1) return null;
-
-  const body = token.slice(0, dot);
-  const given = token.slice(dot + 1);
-  const expected = sign(body);
-
-  const a = Buffer.from(given, "utf8");
-  const b = Buffer.from(expected, "utf8");
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
-
-  const [email, issued] = Buffer.from(body, "base64url")
-    .toString("utf8")
-    .split("|");
-  if (!email || !issued) return null;
-
-  // The signature proves we wrote it. It does not prove it is still current -
-  // a link forwarded to somebody else a week later must not work.
-  if (Math.floor(Date.now() / 1000) - Number(issued) > LINK_TTL_SECONDS) {
-    return null;
-  }
-  return email;
+export async function readLinkToken(token) {
+  return consumeTelegramLink(token);
 }
 
 /** The link a reader taps to connect Telegram. */
-export function deepLink(email) {
+export async function deepLink(email) {
   const bot = botName();
-  const token = makeLinkToken(email);
-  if (!bot || !token) return null;
+  if (!bot) return null;
+  const token = await makeLinkToken(email);
+  if (!token) return null;
   return `https://t.me/${bot}?start=${token}`;
 }
 

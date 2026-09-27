@@ -7,7 +7,7 @@
  * Alerts are the Premium half of the watchlist. A free reader can hold five
  * stocks and see them on the dashboard; being told the moment something is
  * filed is what they are paying for. So the link endpoint asks for Premium
- * while /api/portfolio does not.
+ * while /api/watchlist does not.
  */
 
 import { requirePremiumAccess } from "../../../../lib/entitlements";
@@ -34,10 +34,10 @@ export async function GET(request) {
     );
   }
 
-  const url = deepLink(context.email);
+  const url = await deepLink(context.email);
   if (!url) {
     return Response.json(
-      { error: "Could not build a link. AUTH_SECRET is missing." },
+      { error: "Could not build a Telegram link." },
       { status: 503, headers: PRIVATE }
     );
   }

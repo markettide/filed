@@ -21,14 +21,20 @@ async function collections() {
   const db = client.db(process.env.MONGODB_DB || "market_tide");
   const limits = db.collection("rate_limits");
   const broadcasts = db.collection("brief_broadcasts");
+  const telegramLinks = db.collection("telegram_link_tokens");
   if (!indexesPromise) {
     indexesPromise = Promise.all([
       limits.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
       broadcasts.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+      telegramLinks.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
     ]);
   }
   await indexesPromise;
-  return { limits, broadcasts };
+  return { limits, broadcasts, telegramLinks };
+}
+
+function tokenId(token) {
+  return crypto.createHash("sha256").update(String(token)).digest("hex");
 }
 
 function limitId(scope, identifier) {
@@ -116,4 +122,33 @@ export async function completeBriefBroadcast(day, broadcast, ttlSeconds) {
 export async function releaseBriefBroadcast(day) {
   const { broadcasts } = await collections();
   await broadcasts.deleteOne({ _id: day, state: "creating" });
+}
+
+/** Create a short, one-time Telegram /start token backed by MongoDB. */
+export function newTelegramLinkToken() {
+  return crypto.randomBytes(24).toString("base64url");
+}
+
+export async function createTelegramLink(email, ttlSeconds = 15 * 60) {
+  const { telegramLinks } = await collections();
+  const now = new Date();
+  const token = newTelegramLinkToken();
+  await telegramLinks.insertOne({
+    _id: tokenId(token),
+    email: String(email).trim().toLowerCase(),
+    createdAt: now,
+    expiresAt: new Date(now.getTime() + ttlSeconds * 1000),
+  });
+  return token;
+}
+
+/** Consume a Telegram token exactly once, returning its reader email. */
+export async function consumeTelegramLink(token) {
+  if (!token) return null;
+  const { telegramLinks } = await collections();
+  const record = await telegramLinks.findOneAndDelete({
+    _id: tokenId(token),
+    expiresAt: { $gt: new Date() },
+  });
+  return record?.email || null;
 }
