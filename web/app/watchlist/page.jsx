@@ -55,6 +55,7 @@ export default function Watchlist() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [telegramHelp, setTelegramHelp] = useState(null);
   const [feedLocked, setFeedLocked] = useState(false);
 
   const [query, setQuery] = useState("");
@@ -167,6 +168,7 @@ export default function Watchlist() {
 
   async function connectTelegram() {
     setNotice("");
+    setTelegramHelp(null);
     const res = await fetch("/api/telegram/link", { cache: "no-store" });
     const data = await res.json();
     if (!res.ok) {
@@ -174,9 +176,24 @@ export default function Watchlist() {
       return;
     }
     window.open(data.url, "_blank", "noopener");
+    setTelegramHelp({
+      bot: data.bot,
+      command: data.command,
+      webUrl: data.webUrl,
+    });
     setNotice(
-      "Telegram is opening. Tap Start in the chat, then return here and refresh."
+      "Telegram is opening. If you have the app, tap Start in the chat. Otherwise use the Telegram Web option below."
     );
+  }
+
+  async function copyTelegramCommand() {
+    if (!telegramHelp?.command) return;
+    try {
+      await navigator.clipboard.writeText(telegramHelp.command);
+      setNotice("Connection command copied. Paste it into the bot chat and send.");
+    } catch {
+      setNotice(`Send this command to @${telegramHelp.bot}: ${telegramHelp.command}`);
+    }
   }
 
   async function disconnectTelegram() {
@@ -346,6 +363,33 @@ export default function Watchlist() {
                 Connect Telegram
               </button>
             </>
+          )}
+
+          {premium && telegramHelp && !watchlist?.telegram?.linked && (
+            <div className="wl-telegram-help">
+              <p className="wl-note">
+                Using Telegram in your browser? Open @{telegramHelp.bot}, then
+                paste and send the one-time command below.
+              </p>
+              <code>{telegramHelp.command}</code>
+              <div className="wl-telegram-actions">
+                <a
+                  className="wl-connect"
+                  href={telegramHelp.webUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open Telegram Web
+                </a>
+                <button
+                  type="button"
+                  className="wl-connect"
+                  onClick={copyTelegramCommand}
+                >
+                  Copy connection command
+                </button>
+              </div>
+            </div>
           )}
         </section>
 

@@ -42,7 +42,19 @@ export async function GET(request) {
     );
   }
 
-  return Response.json({ url }, { headers: PRIVATE });
+  const parsed = new URL(url);
+  return Response.json(
+    {
+      url,
+      bot: botName(),
+      // Desktop browsers without Telegram installed cannot handle Telegram's
+      // tg:// hand-off. The page uses this one-time value as a visible,
+      // copyable fallback command for Telegram Web.
+      command: `/start ${parsed.searchParams.get("start")}`,
+      webUrl: `https://web.telegram.org/k/#@${botName()}`,
+    },
+    { headers: PRIVATE }
+  );
 }
 
 export async function DELETE(request) {
