@@ -82,7 +82,12 @@ on:
         default: ""
 
 concurrency:
-  group: scrape
+  # A short manual verification must not be cancelled by the next scheduled
+  # refresh.  They used to share `scrape`, so the R2 test run was killed eleven
+  # minutes in when the clock-triggered run arrived.  Keep one run of each
+  # kind; scheduled runs still replace stale scheduled runs, while a manual
+  # diagnostic is allowed to finish.
+  group: scrape-${{ github.event_name }}
   # A newer run replaces an older one now, rather than queueing behind it.
   # With a five-hour loop, queueing would mean a run waiting hours to start on
   # stale code - which is exactly what happened on 1 September. Nothing is lost
@@ -156,6 +161,15 @@ jobs:
           python tests/test_insider.py
           python tests/test_deals.py
           python tests/test_r2_archive.py
+
+      - name: Verify the R2 archive connection
+        continue-on-error: true
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: python tools/check_r2_archive.py
 
       - name: Decide how much to scrape
         id: plan
