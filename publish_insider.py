@@ -35,6 +35,7 @@ import requests
 import insider
 import mcap
 from mongo_mirror import configured as mongo_configured, execute as mongo_execute
+from r2_archive import archive_json
 
 TTL_DAYS = 400
 TTL_SECONDS = TTL_DAYS * 24 * 3600
@@ -198,6 +199,9 @@ def store_days(url, token, by_day, log=print):
         key = f"mt:insider:{day}"
         rows, added, dropped = merge(read_day(url, token, key), found)
         write_day(url, token, key, rows)
+        archive_json("insider-trading", day, {
+            "schema": 1, "day": day, "trades": rows,
+        }, log=log)
         written += added
         gone = f", -{dropped} no longer allowed" if dropped else ""
         log(f"  insider: {day} now holds {len(rows)} trades "
@@ -452,6 +456,9 @@ def main():
     # opens, or a holiday. Writing an empty day over an empty day is harmless;
     # writing one over a day that has trades is not, and merge() cannot do it.
     write_day(url, token, key, rows)
+    archive_json("insider-trading", day, {
+        "schema": 1, "day": day, "trades": rows,
+    })
 
     raw = redis(url, token, ["GET", "mt:insider:index"])
     try:

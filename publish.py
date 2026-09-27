@@ -37,6 +37,7 @@ import rules
 import triage
 import pipeline
 from mongo_mirror import configured as mongo_configured, execute as mongo_execute
+from r2_archive import archive_json
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KEEP_DAYS = 7
@@ -424,24 +425,26 @@ def main():
                 print(f"  -> the rules changed since this day was written "
                       f"({was} -> {len(important)}); publishing the new verdict")
 
-        write_day(url, token, f"mt:day:{iso}", important)
-        write_day(url, token, f"mt:all:{iso}", rest)
-        redis(url, token, ["SET", f"mt:count:{iso}", json.dumps({
+        counts = {
             "important": len(important), "other": len(rest), "summarised": done,
-            # Per-day, so the headline figures describe the whole week rather
-            # than whichever days the last run happened to touch. A 45-minute
-            # top-up scrapes one day; without this it would report that day's
-            # filing count as the week's.
             "scanned": len(raw), "read": tri.get("read", 0),
-            # Split by board as well, because the SME dashboard has its own
-            # funnel and "19,139 filed on NSE & BSE" above 42 SME filings is
-            # not a funnel, it is two unrelated numbers stacked.
             "scanned_sme": sum(1 for a in raw if a.get("board") == "SME"),
             "scanned_main": sum(1 for a in raw if a.get("board") != "SME"),
-            # Which rules produced these numbers, so the guard above can tell a
-            # deliberate drop from a starved one.
             "rules": triage.rules_fingerprint(),
-        }), "EX", str(TTL_SECONDS)])
+        }
+
+        write_day(url, token, f"mt:day:{iso}", important)
+        write_day(url, token, f"mt:all:{iso}", rest)
+        redis(url, token, ["SET", f"mt:count:{iso}", json.dumps(counts),
+                           "EX", str(TTL_SECONDS)])
+
+        archive_json("announcements", iso, {
+            "schema": 1,
+            "day": iso,
+            "important": important,
+            "other": rest,
+            "counts": counts,
+        })
 
         publish_index(url, token, today, run)
         print(f"  -> published. The dashboard is showing {iso} now.")

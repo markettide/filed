@@ -25,6 +25,7 @@ import json
 
 import deals
 from mongo_mirror import configured as mongo_configured, execute as mongo_execute
+from r2_archive import archive_json
 
 TTL_DAYS = 400
 TTL_SECONDS = TTL_DAYS * 24 * 3600
@@ -141,6 +142,9 @@ def store_days(url, token, by_day, log=print):
         key = f"mt:deals:{day}"
         rows, added, gone = merge(read_day(url, token, key), found)
         write_day(url, token, key, rows)
+        archive_json("bulk-block", day, {
+            "schema": 1, "day": day, "deals": rows,
+        }, log=log)
         written += added
         dropped = f", -{gone} no longer reported" if gone else ""
         log(f"  deals: {day} now holds {len(rows)} deals "
