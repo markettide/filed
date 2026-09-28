@@ -5,6 +5,14 @@ Code inspected: **`bb7c98f` — Let R2 verification runs finish**.
 Latest supplied production screenshots: **27 September 2026**; no fresh production audit was performed for this documentation task.  
 Purpose: give a new developer or AI the context needed to continue without the earlier chat.
 
+### Latest verified state — retained-data phase completed, 28 September 2026
+
+Code was pushed to `main` as `c50ae26`. [Inventory run 36385500150](https://github.com/markettide/filed/actions/runs/36385500150) passed, followed by [copy run 36385688940](https://github.com/markettide/filed/actions/runs/36385688940). The downloaded copy report confirms `ok: true`, all **55** entries `copied_verified`, no incomplete entries, and no manifest error. This includes **12,356 announcement records**, **557 bulk/block records**, and **914 insider-trading records**. Each uploaded snapshot was read back and compared by bytes and decoded payload.
+
+The verified manifest is `retained/manifests/45ab456eecc84ae5b8656050fd45edc6.json.gz`. The report is also available as the `retained-archive-report` artifact on the copy run. MongoDB records/TTLs and the existing daily R2 objects were not modified by this archive-only workflow. Public home, dashboard, and watchlist pages returned HTTP 200 after the copy; this is a reachability check, not a full logged-in regression test.
+
+The connection error is resolved and retained-data preservation is complete for the discovered snapshots. **A 2023–present source backfill and historical website access are still not implemented.** Older sections below retain the investigation chronology; this latest-state section supersedes their pre-fix uncertainty.
+
 ### Follow-up investigation — 28 September 2026
 
 This update supersedes the earlier unknown-root-cause discussion below. Authenticated GitHub logs now prove that `R2_ACCOUNT_ID` contained the full endpoint URL. The writer consequently constructed a malformed `https://https:/...r2.cloudflarestorage.com.r2.cloudflarestorage.com/...` destination. The latest completed run checked before the fix had 13 archive warnings and no successful archive lines. The apparently successful smoke-step status was misleading because the workflow uses `continue-on-error`.
@@ -28,7 +36,7 @@ Local, not-yet-pushed changes now validate account-ID format, trim surrounding c
 
 ### Next-phase preparation — retained-data preservation
 
-Implemented locally (not yet pushed or run in write mode):
+Implemented, pushed, and successfully run in write mode (see latest-state section):
 
 - `tools/archive_retained_market_data.py`: default read-only inventory; explicit `--write` copies market-only documents from `redis_mirror` to R2 and verifies both bytes and decoded payloads.
 - `.github/workflows/archive-retained.yml`: dedicated manual workflow with `write=false` by default and no scraper, alert, newsletter, or MongoDB write step.
@@ -56,13 +64,13 @@ python tools/archive_retained_market_data.py --dataset announcements --from-date
 
 `--write` is required for copying; otherwise no R2 credentials are needed and R2 is not contacted. Errors/incomplete days return a nonzero exit code, with partial progress retained in the report when possible. The script does not request old exchange data, generate AI summaries, shorten Mongo retention, or send messages. Source documents remain untouched. A 2023–present backfill is still a later phase.
 
-Next execution step: obtain the requested approval to push these changes to `main`, then run the dedicated workflow first in inventory mode and then in copy mode. GitHub already holds R2 credentials, while the local environment does not. Do not claim these 55 snapshots have been copied until the write-mode report and readbacks prove it.
+Execution completed with owner approval: the dedicated workflow passed inventory and then copy/readback verification. GitHub holds the R2 credentials; the local environment does not. Next, plan and sample a separate historical source backfill without changing the live recent-data pipeline.
 
 ## 1. Read this first
 
 Market Tide is a live Indian stock-market filings product. It collects NSE/BSE announcements, filters routine paperwork, extracts and summarises important filings, and provides a website, daily brief, insider-trading and bulk/block-deal views, company watchlists, and Telegram alerts.
 
-**The immediate task is to get Cloudflare R2 archiving verifiably working. After that, build a safe historical archive and website access for announcements, bulk/block deals, and insider trading from 2023 to the present.**
+**The next task is a safe historical backfill and website access for announcements, bulk/block deals, and insider trading from 2023 to the present. The R2 connection has been fixed and currently retained MongoDB market snapshots have been copied and verified.**
 
 The current architecture is:
 
@@ -76,7 +84,7 @@ NSE / BSE public filings and trading disclosures
              |                             |
         MongoDB Atlas                Cloudflare R2
      Live application data       Compressed daily snapshots
-      and recent market data     CODE ADDED; CONTENTS UNVERIFIED
+      and recent market data     RETAINED COPY VERIFIED
              |
         Vercel / Next.js
      Website + authenticated APIs
@@ -89,7 +97,7 @@ Important distinctions:
 - Redis/Upstash has been removed from the inspected production runtime code. MongoDB is the live database.
 - `redis_mirror` is a **MongoDB collection name**, not a remaining Redis service. Do not delete or rename it casually.
 - Cloudflare R2 is currently an **additional market-data archive**, not a replacement for MongoDB or Vercel.
-- R2 upload code exists, but the latest supplied dashboard screenshot still shows an empty bucket. **Do not say the Cloudflare migration is complete.**
+- R2 connection and retained-copy verification succeeded after the earlier empty-bucket screenshots. **Do not confuse this with completing the 2023 backfill or historical website.**
 - No complete 2023–present import or historical website reader has been implemented or verified.
 - Existing data, customer accounts, subscriptions, watchlists, and current website behaviour must be preserved.
 
@@ -148,7 +156,7 @@ For a new machine, clone the repository and inspect its latest remote state. For
 | Four R2 secrets configured in GitHub | Reported during setup; values/scopes/destination still require verification |
 | R2 writer wired into all three market-data publishers | Code-confirmed in `996d318` |
 | R2 smoke-check workflow step | Added in `bb7c98f`; an earlier investigation recorded a successful step |
-| Actual readable production R2 market-data objects | **Not verified; latest owner screenshot shows no objects** |
+| Actual readable production R2 market-data objects | **55 retained snapshots copied and read-back verified on 28 September; see latest-state section** |
 | 2023–present backfill | Not implemented or run |
 | Website reading historical R2 data | Not implemented |
 | MongoDB application data moved to Cloudflare | Not done and not required for current archive phase |
@@ -552,7 +560,7 @@ npm run build --prefix web
 
 Existing test coverage includes authentication, sessions, entitlements, payment security, Cashfree, Telegram, watchlist contracts, Mongo market reads, server caches, brief-worker authentication, cron, Kit, and admin/trial behaviour. These are not a substitute for an isolated integration test of live external services.
 
-**Checks actually rerun while preparing this handoff:** 3 tests in `test_r2_archive.py` and 2 in `test_mongo_mirror.py` passed. They use test doubles; this does not prove production credentials or data completeness. The complete website build and all external integrations were not rerun for this documentation-only task.
+**Latest relevant checks:** 21 retained-export tests, 11 R2 tests, and 2 Mongo adapter tests passed. These use test doubles; production copy/readback verification was separately completed as described at the top. The complete website build and all external integrations were not rerun during this archive phase.
 
 Useful checks with side effects distinguished:
 
@@ -716,8 +724,8 @@ A safe rollback normally reverts application changes to a known compatible deplo
 
 ## 19. Ready-to-use continuation brief
 
-> Continue Market Tide from the repository linked in this document. First inspect the current code and deployment state; preserve any work newer than `bb7c98f`. The website and application storage are MongoDB-based, hosted on Vercel. Cloudflare R2 snapshot-writing code exists, but the intended bucket was still empty in the latest supplied screenshot, despite an earlier successful smoke-step result. Diagnose that contradiction from actual logs/configuration and object readback; do not assume a credential cause or claim migration complete. Keep all existing data safe and the live site working. After verified live archiving and preservation of existing retained data, implement a resumable, cost-controlled 2023–present archive for announcements, bulk/block deals, and insider trading, then add efficient authenticated historical browsing/search. Do not replace MongoDB/Vercel, send customer broadcasts, perform destructive cleanup, or start a costly full backfill without the relevant owner decision. Use this handoff's status distinctions, source map, configuration inventory, known limitations, and acceptance checklists. Ask only for genuinely missing access or material product choices; explain progress plainly.
+> Continue Market Tide from the repository linked in this document. First inspect current main and preserve newer work. The live website uses MongoDB and Vercel. The R2 account-ID configuration error was fixed, and commit c50ae26 added retained-data preservation. Copy run 36385688940 read-back verified 55 snapshots with 12,356 announcement records, 557 bulk/block records, and 914 insider records; MongoDB was not changed. Next, implement a separately controlled, resumable 2023–present source backfill, beginning with a small sample and cost/coverage checks, then add efficient authenticated historical browsing/search. Keep current data and the live website safe. Do not confuse existing September snapshots with a completed multi-year import. Do not replace MongoDB/Vercel, send customer broadcasts, perform destructive cleanup, or start a costly full backfill without the relevant owner decision. Use this document's latest-state section over older investigation notes; ask only for missing access or material product choices and explain progress plainly.
 
 ---
 
-**Bottom line:** MongoDB is the inspected live runtime store. R2 archiving is implemented but not yet verified in production. The next priority is proving and stabilizing the archive, followed by safe historical import and website access—not deleting another database or starting another full migration.
+**Bottom line:** MongoDB remains the live runtime store. R2 retained-data copying is verified in production. The next phase is historical import and website access—not deleting MongoDB or claiming that all data since 2023 already exists.
