@@ -20,6 +20,8 @@ export async function GET(request) {
       request.nextUrl.searchParams.get("days") || 30,
       {
         memberPage: request.nextUrl.searchParams.get("memberPage"),
+        watchlistPage: request.nextUrl.searchParams.get("watchlistPage"),
+        watchlistQuery: request.nextUrl.searchParams.get("watchlistQuery"),
         memberQuery: request.nextUrl.searchParams.get("memberQuery"),
         paidPage: request.nextUrl.searchParams.get("paidPage"),
         paidQuery: request.nextUrl.searchParams.get("paidQuery"),

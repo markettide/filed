@@ -93,6 +93,8 @@ export default function AdminDashboard() {
   const [query, setQuery] = useState("");
   const [paidQuery, setPaidQuery] = useState("");
   const [trialQuery, setTrialQuery] = useState("");
+  const [watchlistQuery, setWatchlistQuery] = useState("");
+  const [watchlistPage, setWatchlistPage] = useState(1);
   const [trialStatus, setTrialStatus] = useState("all");
   const [memberPage, setMemberPage] = useState(1);
   const [paidPage, setPaidPage] = useState(1);
@@ -107,6 +109,7 @@ export default function AdminDashboard() {
     if (!silent) setStatus("loading");
     const params = new URLSearchParams({
       date,
+      watchlistPage: String(overrides.watchlistPage ?? watchlistPage),
       memberPage: String(overrides.memberPage ?? memberPage),
       paidPage: String(overrides.paidPage ?? paidPage),
       trialPage: String(overrides.trialPage ?? trialPage),
@@ -114,6 +117,7 @@ export default function AdminDashboard() {
       livePage: String(overrides.livePage ?? livePage),
     });
     const memberQuery = overrides.memberQuery ?? query;
+    params.set("watchlistQuery", overrides.watchlistQuery ?? watchlistQuery);
     if (memberQuery.trim()) params.set("memberQuery", memberQuery.trim());
     const nextPaidQuery = overrides.paidQuery ?? paidQuery;
     if (nextPaidQuery.trim()) params.set("paidQuery", nextPaidQuery.trim());
@@ -154,7 +158,16 @@ export default function AdminDashboard() {
     if (status !== "ready") return undefined;
     const timer = window.setInterval(() => load(selectedDate, true), 30000);
     return () => window.clearInterval(timer);
-  }, [status, selectedDate, memberPage, paidPage, trialPage, visitorPage, livePage, query, paidQuery, trialQuery, trialStatus]);
+  }, [status, selectedDate, memberPage, paidPage, trialPage, visitorPage, livePage, query, paidQuery, trialQuery, trialStatus, watchlistPage, watchlistQuery]);
+
+  useEffect(() => {
+    if (status !== "ready") return undefined;
+    const timer = window.setTimeout(() => {
+      setWatchlistPage(1);
+      load(selectedDate, true, { watchlistPage: 1, watchlistQuery });
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [watchlistQuery]);
 
   useEffect(() => {
     if (status !== "ready") return undefined;
@@ -432,6 +445,50 @@ export default function AdminDashboard() {
             <div key={source}><span>{source}</span><b>{number(count)}</b></div>
           ))}
         </div>
+      </section>
+
+      <section className="admin-panel">
+        <div className="admin-panel-head admin-members-head">
+          <div>
+            <p className="admin-kicker">Watchlist activity</p>
+            <h2>User watchlists</h2>
+          </div>
+          <input type="search" aria-label="Search user watchlists"
+            placeholder="Search email, company, ticker or Telegram…"
+            value={watchlistQuery} onChange={(event) => setWatchlistQuery(event.target.value)} />
+        </div>
+        <p className="admin-engagement-summary">
+          {number(data.watchlistTotals?.users)} users with saved companies · {number(data.watchlistTotals?.companies)} saved company entries · {number(data.watchlistTotals?.connected)} Telegram connections.
+          Current saved state, independent of the selected analytics date. Read-only; no alerts are sent here.
+        </p>
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead><tr><th>Member</th><th>Saved companies</th><th>Parked companies</th><th>Telegram</th><th>Alert preference</th></tr></thead>
+            <tbody>{(data.watchlistUsers || []).map((member) => (
+              <tr key={member.email}>
+                <td><b>{member.email}</b></td>
+                <td><details><summary>{member.stocks.length} companies · View list</summary>
+                  <ul>{member.stocks.map((stock, index) => <li key={`${stock.isin}-${index}`}>
+                    {stock.name}{stock.ticker ? ` (${stock.ticker})` : ""}
+                    <small> · Added {when(stock.addedAt)}</small>
+                  </li>)}</ul>
+                </details></td>
+                <td>{member.parked.length ? <details><summary>{member.parked.length} parked</summary>
+                  <p>Saved aside due to the watchlist limit; not deleted.</p>
+                  <ul>{member.parked.map((stock, index) => <li key={`${stock.isin}-${index}`}>{stock.name}{stock.ticker ? ` (${stock.ticker})` : ""}</li>)}</ul>
+                </details> : "None"}</td>
+                <td>{member.telegramConnected ? `Connected${member.telegramUsername ? ` · @${member.telegramUsername}` : ""}` : "Not connected"}</td>
+                <td>{!member.telegramConnected ? "Not connected" : member.alertsEnabled ? "Enabled" : "Paused"}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+          {!data.watchlistUsers?.length && <p className="admin-empty">No watchlist users match this search.</p>}
+        </div>
+        <p className="admin-engagement-summary">Enabled is the saved preference, not proof of delivery. Alerts also depend on account access and new matching filings.</p>
+        <Pager pagination={data.watchlistPagination} onPage={(page) => {
+          setWatchlistPage(page);
+          load(selectedDate, true, { watchlistPage: page });
+        }} />
       </section>
 
       <section className="admin-panel">

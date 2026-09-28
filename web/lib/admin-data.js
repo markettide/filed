@@ -2,6 +2,7 @@ import { listUsersForAdmin } from "./users";
 import { listPaidOrdersForAdmin } from "./payments";
 import { dailyEngagement, engagementTrend, liveEngagement, trafficTotals } from "./engagement";
 import { trialSummary } from "./admin-trials";
+import { watchlistRows, filterWatchlists } from "./admin-watchlists";
 
 const NEWSLETTER_SOURCES = new Set(["brief", "landing", "newsletter", "legacy-waitlist"]);
 const ADMIN_PAGE_SIZE = 10;
@@ -198,10 +199,19 @@ export async function adminData(selectedDate, trendDays = 30, options = {}) {
   });
   const trialResult = paginate(matchingTrialUsers, options.trialPage, options.all);
   const visitorResult = paginate(engagementVisitors, options.visitorPage, options.all);
+  const watchlists = watchlistRows(mongoRows);
+  const watchlistResult = paginate(filterWatchlists(watchlists, options.watchlistQuery), options.watchlistPage, options.all);
   const liveResult = paginate(identifiedLiveReaders, options.livePage, options.all);
 
   return {
     generatedAt: new Date().toISOString(),
+    watchlistUsers: watchlistResult.items,
+    watchlistPagination: watchlistResult.pagination,
+    watchlistTotals: {
+      users: watchlists.filter((row) => row.stocks.length || row.parked.length).length,
+      companies: watchlists.reduce((sum, row) => sum + row.stocks.length, 0),
+      connected: watchlists.filter((row) => row.telegramConnected).length,
+    },
     traffic: { ...visitTotals, live: identifiedLiveReaders.length },
     totals: {
       members: rows.length,
