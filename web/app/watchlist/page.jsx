@@ -290,7 +290,7 @@ export default function Watchlist() {
             <span className="wl-count">{held.length} / {limit}</span>
             {!premium && (
               <a className="wl-upgrade" href="/pricing">
-                Premium holds 50 →
+                Start trial or Premium · 50 →
               </a>
             )}
           </div>
@@ -314,7 +314,7 @@ export default function Watchlist() {
                 {premium
                   ? `That is all ${limit}. Remove one to follow another.`
                   : `The free plan follows ${limit} companies. `}
-                {!premium && <a href="/pricing">Premium follows 50.</a>}
+                {!premium && <a href="/pricing">Start a 7-day trial or buy Premium to follow 50.</a>}
               </p>
             )}
             {searching && <p className="wl-note">Searching…</p>}
@@ -367,13 +367,6 @@ export default function Watchlist() {
             </ul>
           )}
 
-          {watchlist?.parked > 0 && (
-            <p className="wl-note">
-              {watchlist.parked} more {watchlist.parked === 1 ? "company is" : "companies are"}{" "}
-              saved but not being followed on the free plan.{" "}
-              <a href="/pricing">Premium brings them back.</a>
-            </p>
-          )}
         </section>
 
         <section className={`wl-panel wl-alert-panel ${telegramLinked ? "is-connected" : ""}`}>
@@ -387,9 +380,9 @@ export default function Watchlist() {
 
           {!premium ? (
             <p className="wl-note">
-              Premium sends every filing by these companies to Telegram as it
-              lands — the summary, key numbers and PDF. {" "}
-              <a href="/pricing">See Premium →</a>
+              Telegram alerts require an active 7-day trial or paid plan. If
+              access expires, Telegram is disconnected automatically. {" "}
+              <a href="/pricing">Start trial or see Premium →</a>
             </p>
           ) : !watchlist?.telegramAvailable ? (
             <p className="wl-note">

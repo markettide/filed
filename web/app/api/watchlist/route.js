@@ -56,9 +56,8 @@ export async function GET(request) {
 
   try {
     const limit = limitFor(access);
-    // Checked on the way in rather than at the moment a subscription lapses:
-    // nothing runs when a plan expires, so this is the only place that can
-    // notice. It also restores parked stocks when a reader comes back.
+    // Access is effective immediately from its timestamps. This also performs
+    // the permanent five-company trim and Telegram disconnect after expiry.
     const { stocks, parked } = await enforceLimit(email, limit);
     return Response.json(
       {
@@ -69,10 +68,10 @@ export async function GET(request) {
         premium: access.premium,
         telegramAvailable: telegramConfigured() && Boolean(telegramBotName()),
         telegramBot: telegramBotName(),
-        telegram: profile?.telegram
+        telegram: access.premium && profile?.telegram
           ? { linked: true, username: profile.telegram.username || null }
           : { linked: false },
-        alertsEnabled: profile?.alertsEnabled !== false,
+        alertsEnabled: access.premium && profile?.alertsEnabled !== false,
       },
       { headers: PRIVATE }
     );
@@ -107,6 +106,9 @@ export async function POST(request) {
 
   try {
     const limit = limitFor(access);
+    // Also reconcile here so a direct API call cannot retain an oversized
+    // expired-trial list simply by skipping the watchlist page's GET first.
+    await enforceLimit(email, limit);
     const result = await addToWatchlist(email, company, limit);
 
     if (!result.ok) {
@@ -153,6 +155,7 @@ export async function DELETE(request) {
   }
 
   try {
+    await enforceLimit(email, limitFor(access));
     const stocks = await removeFromWatchlist(email, isin.trim().toUpperCase());
     return Response.json(
       { ok: true, stocks, limit: limitFor(access) },

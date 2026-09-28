@@ -24,6 +24,8 @@
 import crypto from "node:crypto";
 import { readLinkToken, sendMessage, configured } from "../../../../lib/telegram";
 import { setTelegram, listWatchlist } from "../../../../lib/watchlist";
+import { findByEmail } from "../../../../lib/users";
+import { accessForProfile } from "../../../../lib/entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -82,6 +84,15 @@ export async function POST(request) {
   }
 
   try {
+    const profile = await findByEmail(email);
+    if (!accessForProfile(profile).premium) {
+      await setTelegram(email, null);
+      await sendMessage(
+        chat.id,
+        "Telegram alerts require an active free trial or paid plan. Open Market Tide to start your trial or choose a plan."
+      );
+      return Response.json({ ok: true });
+    }
     await setTelegram(email, {
       chatId: chat.id,
       username: chat.username || null,

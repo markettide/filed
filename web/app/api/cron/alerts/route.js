@@ -25,6 +25,7 @@ import {
   configured as dbReady,
   markAlerted,
   watchersOf,
+  cleanupExpiredPremiumBenefits,
 } from "../../../../lib/watchlist";
 import {
   configured as telegramReady,
@@ -88,6 +89,11 @@ export async function GET(request) {
   const freshHours = Number(url.searchParams.get("hours")) || FRESH_HOURS;
 
   try {
+    // This regular run is also the background expiry reconciler. A dry run is
+    // strictly read-only; ordinary runs permanently trim and unlink lapses.
+    const cleanup = dryRun
+      ? { usersChanged: 0, companiesRemoved: 0, telegramDisconnected: 0 }
+      : await cleanupExpiredPremiumBenefits();
     const { items } = await recent({ scope: "important", sort: "latest" });
     const cutoff = Date.now() - freshHours * 3600 * 1000;
 
@@ -104,7 +110,7 @@ export async function GET(request) {
     }
 
     if (!byKey.size) {
-      return Response.json({ ok: true, filings: 0, sent: 0, readers: 0 });
+      return Response.json({ ok: true, filings: 0, sent: 0, readers: 0, cleanup });
     }
 
     const watchers = await watchersOf([...byKey.keys()]);
@@ -184,6 +190,7 @@ export async function GET(request) {
       readers: reached,
       sent,
       skipped,
+      cleanup,
     });
   } catch (error) {
     console.error("[alerts] run failed:", error);

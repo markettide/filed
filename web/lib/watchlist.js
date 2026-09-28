@@ -23,6 +23,7 @@
  */
 
 import { MongoClient } from "mongodb";
+import { accessForProfile } from "./entitlements.js";
 
 export const WATCHLIST_LIMITS = { free: 5, premium: 50 };
 
@@ -144,53 +145,79 @@ export async function removeFromWatchlist(email, isin) {
 }
 
 /**
- * Trim a watchlist that is over the limit, keeping the oldest.
- *
- * A reader on Premium can hold fifty. When the subscription lapses they are
- * back to five, and the other forty-five have to go somewhere. Deleting them
- * on the spot would mean a lapsed reader who renews a week later finds an
- * empty watchlist, so nothing is deleted: the extras are moved aside, and
- * restored the moment they are entitled to them again.
+ * Build the permanent downgrade update. Extras are deliberately deleted:
+ * renewing later starts from the five companies that survived the downgrade.
  */
+export function accessCleanup(profile, limit) {
+  const held = Array.isArray(profile?.portfolio) ? profile.portfolio : [];
+  const parked = Array.isArray(profile?.portfolioOverflow)
+    ? profile.portfolioOverflow : [];
+  const stocks = held.slice(0, limit);
+  const set = {};
+  const unset = {};
+  if (held.length > limit) set.portfolio = stocks;
+  if (parked.length || Object.hasOwn(profile || {}, "portfolioOverflow")) {
+    unset.portfolioOverflow = "";
+  }
+  if (limit === WATCHLIST_LIMITS.free) {
+    if (profile?.telegram) unset.telegram = "";
+    if (profile?.alertsEnabled !== false) set.alertsEnabled = false;
+  }
+  return {
+    stocks,
+    parked: 0,
+    removed: Math.max(0, held.length - stocks.length) + parked.length,
+    disconnected: Object.hasOwn(unset, "telegram"),
+    update: Object.keys(set).length || Object.keys(unset).length
+      ? { ...(Object.keys(set).length ? { $set: set } : {}), ...(Object.keys(unset).length ? { $unset: unset } : {}) }
+      : null,
+  };
+}
+
 export async function enforceLimit(email, limit) {
   const users = await collection();
   const row = await users.findOne(
     { email },
-    { projection: { _id: 0, portfolio: 1, portfolioOverflow: 1 } }
+    { projection: { _id: 0, portfolio: 1, portfolioOverflow: 1, telegram: 1, alertsEnabled: 1 } }
   );
-  const held = row?.portfolio || [];
-  const parked = row?.portfolioOverflow || [];
+  const result = accessCleanup(row, limit);
+  if (result.update) await users.updateOne({ email }, result.update);
+  return result;
+}
 
-  if (held.length > limit) {
-    const keep = held.slice(0, limit);
-    const park = held.slice(limit);
-    await users.updateOne(
-      { email },
-      { $set: { portfolio: keep, portfolioOverflow: [...park, ...parked] } }
-    );
-    return { stocks: keep, parked: park.length + parked.length };
+/**
+ * Reconcile every lapsed/free account. Feature access stops from the expiry
+ * timestamp; this removes stale data on the next regular alert run as well.
+ */
+export async function cleanupExpiredPremiumBenefits(now = new Date()) {
+  const users = await collection();
+  const candidates = await users.find(
+    { $or: [{ "portfolio.5": { $exists: true } }, { "portfolioOverflow.0": { $exists: true } }, { telegram: { $exists: true } }] },
+    { projection: { portfolio: 1, portfolioOverflow: 1, telegram: 1, alertsEnabled: 1,
+      subscriptionPlan: 1, subscriptionStatus: 1, subscriptionEndsAt: 1,
+      trialStartedAt: 1, trialEndsAt: 1 } }
+  ).toArray();
+  let usersChanged = 0;
+  let companiesRemoved = 0;
+  let telegramDisconnected = 0;
+  for (const profile of candidates) {
+    if (accessForProfile(profile, now).premium) continue;
+    const result = accessCleanup(profile, WATCHLIST_LIMITS.free);
+    if (!result.update) continue;
+    // Recheck dates in the write so a payment activated concurrently is safe.
+    const write = await users.updateOne({
+      _id: profile._id,
+      $nor: [
+        { trialEndsAt: { $gt: now } },
+        { subscriptionPlan: "premium", subscriptionStatus: "active", subscriptionEndsAt: { $gt: now } },
+      ],
+    }, result.update);
+    if (!write.modifiedCount) continue;
+    usersChanged += 1;
+    companiesRemoved += result.removed;
+    if (result.disconnected) telegramDisconnected += 1;
   }
-
-  // Back on Premium: take back as many as now fit.
-  if (parked.length && held.length < limit) {
-    const room = limit - held.length;
-    const restored = parked.slice(0, room);
-    await users.updateOne(
-      { email },
-      {
-        $set: {
-          portfolio: [...held, ...restored],
-          portfolioOverflow: parked.slice(room),
-        },
-      }
-    );
-    return {
-      stocks: [...held, ...restored],
-      parked: parked.length - restored.length,
-    };
-  }
-
-  return { stocks: held, parked: parked.length };
+  return { usersChanged, companiesRemoved, telegramDisconnected };
 }
 
 /** Everyone watching any of these match keys, for the alert run. */
@@ -243,7 +270,7 @@ export async function setTelegram(email, telegram) {
     { email },
     telegram
       ? { $set: { telegram, alertsEnabled: true } }
-      : { $unset: { telegram: "" } }
+      : { $unset: { telegram: "" }, $set: { alertsEnabled: false } }
   );
 }
 
