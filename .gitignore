@@ -5,6 +5,7 @@ config.json
 dashboard.html
 cache.json
 *.bak.json
+retained-archive-report.json
 web/waitlist.local.jsonl
 web/exports/
 

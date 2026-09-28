@@ -1,0 +1,58 @@
+name: Preserve retained market data in R2
+
+on:
+  workflow_dispatch:
+    inputs:
+      write:
+        description: Copy and read-back verify (false inventories only)
+        type: boolean
+        default: false
+      dataset:
+        description: Dataset
+        type: choice
+        options: [all, announcements, insider-trading, bulk-block]
+        default: all
+
+permissions:
+  contents: read
+
+concurrency:
+  group: archive-retained
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - name: Test archive safety
+        run: |
+          python -m unittest discover -s tests -p 'test_r2_archive.py'
+          python -m unittest discover -s tests -p 'test_archive_retained.py'
+      - name: Inventory or copy retained market data
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_DB: ${{ secrets.MONGODB_DB }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          COPY_ENABLED: ${{ inputs.write }}
+          DATASET: ${{ inputs.dataset }}
+        run: |
+          args=(--dataset "$DATASET" --report retained-archive-report.json)
+          if [ "$COPY_ENABLED" = "true" ]; then args+=(--write); fi
+          python -u tools/archive_retained_market_data.py "${args[@]}"
+      - name: Keep verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retained-archive-report
+          path: retained-archive-report.json
+          retention-days: 30
+          if-no-files-found: warn

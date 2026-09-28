@@ -1,7 +1,7 @@
 """Permanent, compressed market-data archives in Cloudflare R2.
 
 MongoDB remains the live application store.  R2 is deliberately a second,
-append-by-date copy so a failed archive upload can never stop a scrape or
+date-keyed snapshot copy so a failed archive upload can never stop a scrape or
 replace the data the website is currently serving.
 """
 
@@ -9,6 +9,7 @@ import datetime
 import gzip
 import json
 import os
+import re
 
 
 REQUIRED_ENV = (
@@ -22,7 +23,21 @@ _client = None
 
 
 def configured():
-    return all(os.environ.get(name) for name in REQUIRED_ENV)
+    return all(os.environ.get(name, "").strip() for name in REQUIRED_ENV)
+
+
+def configuration():
+    """Validate settings without echoing credential values into job logs."""
+    values = {name: os.environ.get(name, "").strip() for name in REQUIRED_ENV}
+    missing = [name for name, value in values.items() if not value]
+    if missing:
+        raise ValueError("Missing R2 settings: " + ", ".join(missing))
+    if not re.fullmatch(r"[a-fA-F0-9]{32}", values["R2_ACCOUNT_ID"]):
+        raise ValueError(
+            "R2_ACCOUNT_ID must be the 32-character Cloudflare account ID, "
+            "not the endpoint URL or API token ID."
+        )
+    return values
 
 
 def _store():
@@ -30,17 +45,19 @@ def _store():
     if _client is not None:
         return _client
 
+    settings = configuration()
     import boto3
     from botocore.config import Config
 
-    account_id = os.environ["R2_ACCOUNT_ID"].strip()
+    account_id = settings["R2_ACCOUNT_ID"]
     _client = boto3.client(
         "s3",
         endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
-        aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
+        aws_access_key_id=settings["R2_ACCESS_KEY_ID"],
+        aws_secret_access_key=settings["R2_SECRET_ACCESS_KEY"],
         region_name="auto",
-        config=Config(signature_version="s3v4"),
+        config=Config(signature_version="s3v4", connect_timeout=10,
+                      read_timeout=30, retries={"mode": "standard", "max_attempts": 2}),
     )
     return _client
 
@@ -72,7 +89,7 @@ def archive_json(kind, day, payload, log=print):
         key = object_key(kind, day)
         body = encoded(payload)
         _store().put_object(
-            Bucket=os.environ["R2_BUCKET_NAME"],
+            Bucket=os.environ["R2_BUCKET_NAME"].strip(),
             Key=key,
             Body=body,
             ContentType="application/json",
@@ -89,3 +106,18 @@ def archive_json(kind, day, payload, log=print):
         log(f"  R2 archive warning: {key} was not uploaded "
             f"({type(exc).__name__}: {exc})")
         return False
+
+
+def verify_json(kind, day, payload):
+    """Read back a known snapshot and compare its decoded payload."""
+    response = _store().get_object(
+        Bucket=os.environ["R2_BUCKET_NAME"].strip(), Key=object_key(kind, day)
+    )
+    stream = response["Body"]
+    try:
+        restored = json.loads(gzip.decompress(stream.read()).decode("utf-8"))
+    finally:
+        stream.close()
+    if restored != payload:
+        raise ValueError("R2 readback did not match the uploaded payload.")
+    return True
