@@ -11,7 +11,6 @@ export default function MkFooter() {
             <a href="/dashboard">Dashboard</a>
             <a href="/brief">Daily brief</a>
             <a href="/pricing">Pricing</a>
-            <a href="/join">Join</a>
             <a href="/terms">Terms</a>
             <a href="/refund">Refunds</a>
             <a href="/privacy">Privacy</a>
