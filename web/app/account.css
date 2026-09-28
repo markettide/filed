@@ -46,6 +46,16 @@
 .profile-header p:last-child, .profile-signed-out > p { margin: 0; color: var(--muted); line-height: 1.55; }
 .profile-signout { color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 9px; padding: 10px 14px; font: inherit; font-weight: 650; cursor: pointer; }
 .profile-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, .8fr); gap: 16px; align-items: start; }
+.profile-tools { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 16px; }
+.profile-tool { align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 15px; box-shadow: var(--shadow-sm); color: var(--ink); display: grid; gap: 12px; grid-template-columns: auto minmax(0, 1fr) auto; padding: 17px; text-decoration: none; transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.profile-tool:hover { border-color: color-mix(in srgb, var(--accent) 42%, var(--line)); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.profile-tool--featured { background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 9%, var(--panel)), var(--panel)); border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); }
+.profile-tool-icon { align-items: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: 11px; color: var(--accent); display: flex; font-size: 19px; height: 42px; justify-content: center; width: 42px; }
+.profile-tool > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
+.profile-tool small { color: var(--dim); font-size: 10px; font-style: normal; font-weight: 750; letter-spacing: .075em; text-transform: uppercase; }
+.profile-tool strong { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-tool em { color: var(--muted); font-size: 11.5px; font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-tool > b { color: var(--dim); font-size: 17px; }
 .profile-side { display: grid; gap: 16px; }
 .profile-card { padding: 26px; border: 1px solid var(--line); background: var(--panel); border-radius: 16px; box-shadow: var(--shadow-sm); }
 .profile-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 22px; }
@@ -72,6 +82,7 @@
 
 @media (max-width: 760px) {
   .plan-grid, .profile-grid, .faq-grid { grid-template-columns: 1fr; }
+  .profile-tools { grid-template-columns: 1fr; }
   .plans-hero { padding-top: 46px; }
   .plan-card { padding: 26px 22px; }
   .profile-shell { padding-top: 40px; }

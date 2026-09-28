@@ -260,6 +260,40 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* ---------------- watchlist ---------------- */}
+        <section className="mk-sec">
+          <div className="watchlist-spotlight">
+            <div className="watchlist-spotlight-copy">
+              <p className="mk-kicker">Your companies, one signal</p>
+              <h2 className="mk-h2">Build a watchlist. Let the filings come to you.</h2>
+              <p>
+                Follow five companies free, or unlock fifty during your trial and
+                with Premium. Connect Telegram once and important new filings arrive
+                with the summary, key numbers and original PDF.
+              </p>
+              <ul>
+                <li>One focused feed for the companies you follow</li>
+                <li>Instant Telegram alerts during trial and Premium</li>
+                <li>No commands to paste and no repeated setup</li>
+              </ul>
+              <div className="mk-ctas watchlist-spotlight-actions">
+                <a className="btn-lg btn-grad" href="/watchlist">Build your watchlist</a>
+                <a className="btn-lg btn-ghost" href="/pricing">See plans</a>
+              </div>
+            </div>
+            <div className="watchlist-preview" aria-label="Preview of the company watchlist">
+              <div className="watchlist-preview-head"><span>My watchlist</span><b>3 / 50</b></div>
+              {["Reliance Industries", "Fortis Healthcare", "Infosys"].map((company, index) => (
+                <div className="watchlist-preview-company" key={company}>
+                  <i>{company[0]}</i><span><strong>{company}</strong><small>{index === 0 ? "New filing · 8 min ago" : "Following"}</small></span>
+                  <b>{index === 0 ? "New" : "✓"}</b>
+                </div>
+              ))}
+              <div className="watchlist-preview-telegram"><i>➤</i><span><strong>Telegram connected</strong><small>Important filings arrive automatically</small></span></div>
+            </div>
+          </div>
+        </section>
+
         {/* ---------------- pricing ---------------- */}
         <section className="mk-sec home-pricing">
           <div className="mk-sec-head">
@@ -281,6 +315,7 @@ export default function Landing() {
               <ul className="plan-list">
                 <li>Daily email newsletter</li>
                 <li>Plain-English market highlights</li>
+                <li>Watch up to 5 companies</li>
                 <li>Unsubscribe any time</li>
               </ul>
               <a className="btn-lg btn-ghost plan-action" href="/brief#subscribe">Get the free newsletter</a>
@@ -295,6 +330,7 @@ export default function Landing() {
               <p>Everything needed to research important NSE and BSE filings efficiently.</p>
               <ul className="plan-list">
                 <li>Full announcement dashboard</li>
+                <li>50-company watchlist with Telegram alerts</li>
                 <li>Insider trading tracker</li>
                 <li>Bulk and block deal tracker</li>
                 <li>Summaries, key numbers and original PDFs</li>

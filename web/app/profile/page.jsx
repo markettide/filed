@@ -125,6 +125,26 @@ export default function ProfilePage() {
         {loading && !profile ? <div className="profile-loading">Loading your account…</div> : null}
 
         {profile ? (
+          <>
+          <section className="profile-tools" aria-label="Your Market Tide tools">
+            <a href="/watchlist" className="profile-tool profile-tool--featured">
+              <span className="profile-tool-icon" aria-hidden="true">◎</span>
+              <span><small>Your watchlist</small><strong>{profile.watchlist.companies} of {profile.watchlist.limit} companies</strong>
+                <em>{profile.watchlist.telegramConnected ? "Telegram alerts connected" : hasPremiumAccess ? "Connect Telegram alerts" : "5 companies included free"}</em></span>
+              <b aria-hidden="true">→</b>
+            </a>
+            <a href="/dashboard" className="profile-tool">
+              <span className="profile-tool-icon" aria-hidden="true">↗</span>
+              <span><small>Research</small><strong>Announcement dashboard</strong><em>Important NSE &amp; BSE filings</em></span>
+              <b aria-hidden="true">→</b>
+            </a>
+            <a href="/brief" className="profile-tool">
+              <span className="profile-tool-icon" aria-hidden="true">▤</span>
+              <span><small>Every morning</small><strong>Daily brief</strong><em>{profile.newsletter.subscribed ? "Newsletter active" : "Activate your free newsletter"}</em></span>
+              <b aria-hidden="true">→</b>
+            </a>
+          </section>
+
           <div className="profile-grid">
             <section className="profile-card profile-card--details">
               <div className="profile-card-head"><div><span>Personal details</span><h2>Your profile</h2></div></div>
@@ -181,6 +201,7 @@ export default function ProfilePage() {
               </section>
             </div>
           </div>
+          </>
         ) : null}
       </main>
       <MkFooter />

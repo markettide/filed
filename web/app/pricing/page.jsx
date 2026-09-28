@@ -10,6 +10,8 @@ export const metadata = {
 
 const premiumFeatures = [
   "Everything in the Free plan",
+  "Follow up to 50 companies in your Watchlist",
+  "Instant Telegram alerts for watched companies",
   "Full NSE and BSE announcement dashboard",
   "Insider trading tracker",
   "Bulk and block deal tracker",
@@ -40,7 +42,7 @@ export default function PricingPage() {
           <article className="plan-card">
             <div className="plan-card-head">
               <div>
-                <span className="plan-eyebrow">Newsletter</span>
+                <span className="plan-eyebrow">Start free</span>
                 <h2>{PLANS.free.name}</h2>
               </div>
               <div className="plan-price"><b>₹0</b><span>/ forever</span></div>
@@ -50,6 +52,7 @@ export default function PricingPage() {
               <li>Curated morning newsletter</li>
               <li>The filings that matter, in plain English</li>
               <li>Delivered directly to your inbox</li>
+              <li>Personal watchlist for up to 5 companies</li>
               <li>Unsubscribe any time</li>
             </ul>
             <a className="btn-lg btn-ghost plan-action" href="/brief#subscribe">
@@ -87,6 +90,8 @@ export default function PricingPage() {
             </div>
             {[
               ["Daily email newsletter", "Yes", "Yes"],
+              ["Personal company watchlist", "Up to 5", "Up to 50"],
+              ["Instant Telegram filing alerts", "—", "Yes"],
               ["Announcement dashboard", "—", "Yes"],
               ["Insider trading tracker", "—", "Yes"],
               ["Bulk and block deal tracker", "—", "Yes"],
@@ -110,10 +115,10 @@ export default function PricingPage() {
             <h2 className="mk-h2">Premium payments</h2>
           </div>
           <div className="faq-grid">
-            <article><h3>Can I stay on Free?</h3><p>Yes. The email newsletter remains the complete Free plan, with no card required.</p></article>
+            <article><h3>Can I stay on Free?</h3><p>Yes. The email newsletter and a five-company Watchlist stay free, with no card required.</p></article>
             <article><h3>How does the free trial work?</h3><p>Each account can try all Premium tools free for seven days. No card is needed, and you will not be charged when it ends.</p></article>
             <article><h3>Is this automatic renewal?</h3><p>No. ₹299 is a one-time payment that provides three months of Premium access.</p></article>
-            <article><h3>What happens after seven days?</h3><p>Premium tools lock automatically. Your free newsletter continues, and you can choose the ₹299 plan whenever you are ready.</p></article>
+            <article><h3>What happens after seven days?</h3><p>Your free newsletter continues, your watchlist keeps its first five companies, and Telegram disconnects. Choose Premium whenever you are ready to follow up to 50 and reconnect alerts.</p></article>
             <article><h3>Can I pay before my trial ends?</h3><p>Yes. While your trial is active, choose Buy Premium now. Your paid three-month access begins as soon as Cashfree verifies the payment.</p></article>
             <article><h3>When does paid Premium begin?</h3><p>Paid access begins only after Cashfree securely confirms that your payment succeeded.</p></article>
             <article><h3>Is this investment advice?</h3><p>No. Market Tide summarises public filings. Always read the original filing before acting.</p></article>

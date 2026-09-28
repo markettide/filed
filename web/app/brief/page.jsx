@@ -209,6 +209,16 @@ export default function Brief() {
           </p>
         </section>
 
+        <section className="brief-watchlist-callout">
+          <div className="brief-watchlist-icon" aria-hidden="true">◎</div>
+          <div>
+            <p className="mk-kicker">Between morning briefs</p>
+            <h2>Follow your companies as filings land</h2>
+            <p>Add companies to your Watchlist and connect Telegram for important filing alerts during your trial or Premium plan.</p>
+          </div>
+          <a className="btn-lg btn-ghost" href="/watchlist">Open Watchlist →</a>
+        </section>
+
         <section className="mk-sec">
           <div className="mk-sec-head">
             <p className="mk-kicker">What you get</p>
@@ -244,7 +254,7 @@ export default function Brief() {
               <p>
                 The brief is the fifty worth your morning. Every filing we read
                 — including the ones it leaves out — stays searchable on the{" "}
-                <a href="/dashboard">dashboard</a>, free.
+                <a href="/dashboard">dashboard</a> during your trial or Premium plan.
               </p>
             </div>
           </div>

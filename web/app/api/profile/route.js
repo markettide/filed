@@ -2,6 +2,7 @@ import { currentUser } from "../../../lib/session";
 import { normalisePhone } from "../../../lib/phone";
 import { findByEmail, updateUserProfile } from "../../../lib/users";
 import { accessForProfile } from "../../../lib/entitlements";
+import { limitFor } from "../../../lib/watchlist";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +24,11 @@ function publicProfile(profile, email) {
       subscribed: Boolean(profile?.briefSubscribed),
       subscribedAt: profile?.briefSubscribedAt || null,
       deliveryStatus: profile?.kitSyncStatus || null,
+    },
+    watchlist: {
+      companies: Array.isArray(profile?.portfolio) ? profile.portfolio.length : 0,
+      limit: limitFor(access),
+      telegramConnected: Boolean(access.premium && profile?.telegram?.chatId),
     },
     subscription: {
       plan: access.paidActive ? "premium" : access.trialActive ? "trial" : "free",
