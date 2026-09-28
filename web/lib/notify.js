@@ -47,12 +47,13 @@ function from() {
 
 async function deliver(message) {
   if (!emailConfigured()) return { sent: false, reason: "email not configured" };
-  const { replyTo, ...content } = message;
+  const { replyTo, idempotencyKey, ...content } = message;
   const response = await fetch(API, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       "Content-Type": "application/json",
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
     },
     body: JSON.stringify({
       from: from(),
@@ -131,4 +132,9 @@ export async function sendContactMessage({ name, email, message }) {
     subject: `Market Tide contact: ${name}`,
     text: `From: ${name} <${email}>\n\n${message}`,
   });
+}
+
+/** Send one stage of the expired-trial conversion sequence. */
+export async function sendTrialReminderEmail({ to, subject, text, html, idempotencyKey }) {
+  return deliver({ to, subject, text, html, idempotencyKey });
 }

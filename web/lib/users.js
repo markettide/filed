@@ -253,6 +253,145 @@ export async function countNewsletterSubscribers() {
   return users.countDocuments({ briefSubscribed: true });
 }
 
+const TRIAL_FOLLOWUP_DELAY_MS = 7 * 24 * 60 * 60 * 1000;
+const REMINDER_CLAIM_TTL_MS = 20 * 60 * 1000;
+
+function noPaidHistoryQuery() {
+  return {
+    $and: [
+      {
+        $or: [
+          { latestPaymentOrderId: { $exists: false } },
+          { latestPaymentOrderId: null },
+          { latestPaymentOrderId: "" },
+        ],
+      },
+      {
+        $or: [
+          { premiumOrderIds: { $exists: false } },
+          { premiumOrderIds: { $size: 0 } },
+        ],
+      },
+    ],
+  };
+}
+
+/** Readers whose expired-trial sequence has a message due now. */
+export async function listTrialReminderCandidates(now = new Date(), limit = 100) {
+  const users = await collection();
+  const followupCutoff = new Date(now.getTime() - TRIAL_FOLLOWUP_DELAY_MS);
+  return users.find(
+    {
+      email: { $type: "string", $ne: "" },
+      trialEndsAt: { $lte: now },
+      ...noPaidHistoryQuery(),
+      $or: [
+        { trialExpiryReminderSentAt: { $exists: false } },
+        {
+          trialExpiryReminderSentAt: { $type: "date", $lte: followupCutoff },
+          trialFollowupReminderSentAt: { $exists: false },
+        },
+      ],
+    },
+    {
+      projection: {
+        _id: 0,
+        email: 1,
+        name: 1,
+        trialStartedAt: 1,
+        trialEndsAt: 1,
+        trialExpiryReminderSentAt: 1,
+        trialFollowupReminderSentAt: 1,
+        latestPaymentOrderId: 1,
+        premiumOrderIds: 1,
+        subscriptionPlan: 1,
+        subscriptionStatus: 1,
+        subscriptionEndsAt: 1,
+      },
+    }
+  ).sort({ trialEndsAt: 1 }).limit(Math.max(1, Math.min(Number(limit) || 100, 250))).toArray();
+}
+
+function reminderFields(stage) {
+  if (stage === "expired") {
+    return {
+      sentAt: "trialExpiryReminderSentAt",
+      providerId: "trialExpiryReminderProviderId",
+      claimedAt: "trialExpiryReminderClaimedAt",
+      attemptedAt: "trialExpiryReminderAttemptedAt",
+      error: "trialExpiryReminderError",
+    };
+  }
+  if (stage === "followup") {
+    return {
+      sentAt: "trialFollowupReminderSentAt",
+      providerId: "trialFollowupReminderProviderId",
+      claimedAt: "trialFollowupReminderClaimedAt",
+      attemptedAt: "trialFollowupReminderAttemptedAt",
+      error: "trialFollowupReminderError",
+    };
+  }
+  throw new Error("Unknown trial reminder stage");
+}
+
+/** Atomically reserve one reminder so overlapping cron runs cannot both send it. */
+export async function claimTrialReminder({ email, trialEndsAt, stage, now = new Date() }) {
+  const users = await collection();
+  const fields = reminderFields(stage);
+  const staleBefore = new Date(now.getTime() - REMINDER_CLAIM_TTL_MS);
+  const stagePrerequisite = stage === "followup"
+    ? { trialExpiryReminderSentAt: { $type: "date" } }
+    : {};
+  const result = await users.updateOne(
+    {
+      email,
+      trialEndsAt: new Date(trialEndsAt),
+      ...noPaidHistoryQuery(),
+      ...stagePrerequisite,
+      [fields.sentAt]: { $exists: false },
+      $or: [
+        { [fields.claimedAt]: { $exists: false } },
+        { [fields.claimedAt]: { $lt: staleBefore } },
+      ],
+    },
+    {
+      $set: {
+        [fields.claimedAt]: now,
+        [fields.attemptedAt]: now,
+      },
+      $unset: { [fields.error]: "" },
+    }
+  );
+  return result.modifiedCount === 1;
+}
+
+export async function completeTrialReminder({ email, trialEndsAt, stage, providerId, now = new Date() }) {
+  const users = await collection();
+  const fields = reminderFields(stage);
+  await users.updateOne(
+    { email, trialEndsAt: new Date(trialEndsAt), [fields.sentAt]: { $exists: false } },
+    {
+      $set: {
+        [fields.sentAt]: now,
+        ...(providerId ? { [fields.providerId]: String(providerId).slice(0, 160) } : {}),
+      },
+      $unset: { [fields.claimedAt]: "", [fields.error]: "" },
+    }
+  );
+}
+
+export async function releaseTrialReminder({ email, trialEndsAt, stage, error }) {
+  const users = await collection();
+  const fields = reminderFields(stage);
+  await users.updateOne(
+    { email, trialEndsAt: new Date(trialEndsAt), [fields.sentAt]: { $exists: false } },
+    {
+      $set: { [fields.error]: String(error || "delivery failed").slice(0, 300) },
+      $unset: { [fields.claimedAt]: "" },
+    }
+  );
+}
+
 /** Track whether a newsletter subscriber has reached Kit successfully. */
 export async function markKitSync(email, status, detail = null) {
   const users = await collection();
