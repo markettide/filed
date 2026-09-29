@@ -133,8 +133,3 @@ export async function sendContactMessage({ name, email, message }) {
     text: `From: ${name} <${email}>\n\n${message}`,
   });
 }
-
-/** Send one stage of the expired-trial conversion sequence. */
-export async function sendTrialReminderEmail({ to, subject, text, html, idempotencyKey }) {
-  return deliver({ to, subject, text, html, idempotencyKey });
-}

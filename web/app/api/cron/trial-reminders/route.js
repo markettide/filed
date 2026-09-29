@@ -1,4 +1,4 @@
-import { emailConfigured } from "../../../../lib/notify.js";
+import { configured as kitConfigured } from "../../../../lib/kit.js";
 import { processTrialReminders } from "../../../../lib/trial-reminders.js";
 import { configured as usersConfigured } from "../../../../lib/users.js";
 
@@ -22,8 +22,8 @@ export async function GET(request) {
   if (!usersConfigured()) {
     return Response.json({ error: "MONGODB_URI is not configured." }, { status: 503 });
   }
-  if (!emailConfigured()) {
-    return Response.json({ error: "RESEND_API_KEY is not configured." }, { status: 503 });
+  if (!kitConfigured()) {
+    return Response.json({ error: "KIT_API_KEY is not configured." }, { status: 503 });
   }
 
   const url = new URL(request.url);

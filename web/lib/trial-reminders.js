@@ -2,7 +2,7 @@
 
 import crypto from "node:crypto";
 import { accessForProfile } from "./entitlements.js";
-import { sendTrialReminderEmail } from "./notify.js";
+import { sendKitTrialReminder } from "./kit-trial-reminders.js";
 import {
   claimTrialReminder,
   completeTrialReminder,
@@ -185,7 +185,7 @@ export async function processTrialReminders({
 } = {}) {
   const list = services.list || listTrialReminderCandidates;
   const claim = services.claim || claimTrialReminder;
-  const send = services.send || sendTrialReminderEmail;
+  const send = services.send || sendKitTrialReminder;
   const complete = services.complete || completeTrialReminder;
   const release = services.release || releaseTrialReminder;
   const candidates = await list(now, limit);

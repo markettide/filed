@@ -31,8 +31,8 @@ private environment variables in Vercel for Production, Preview and Development:
 - `RESEND_API_KEY` — current transactional provider key; this will be replaced by Brevo for OTP
 - `RESEND_FROM` — verified sender; defaults to `Market Tide <brief@markettide.in>`
 - `REPLY_TO_EMAIL` — reply destination; defaults to `market.tide27@gmail.com`
-- `KIT_API_KEY` — Kit V4 API key used to add each explicit newsletter signup to the Kit audience
-- `KIT_FROM_EMAIL` — verified Kit sender address; defaults to `brief@markettide.in`
+- `KIT_API_KEY` — Kit V4 API key used for newsletter subscribers, Daily Brief broadcasts and trial reminders
+- `KIT_FROM_EMAIL` — verified Kit sender used by Daily Brief and trial-reminder broadcasts; defaults to `brief@markettide.in`
 - `CRON_SECRET` — random value of at least 16 characters; Vercel sends it to the cron route
 - `GITHUB_DISPATCH_TOKEN` — GitHub token with Actions write access, used only to start the PDF worker
 - `ADMIN_PATH_TOKEN` — long random token used in the private `/control/<token>` URL
