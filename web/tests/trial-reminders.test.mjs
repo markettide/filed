@@ -9,7 +9,12 @@ const now = new Date("2026-09-28T10:00:00.000Z");
 const endedToday = new Date("2026-09-28T09:00:00.000Z");
 const endedEightDaysAgo = new Date("2026-09-20T09:00:00.000Z");
 
-assert.equal(reminderStageForProfile({ trialEndsAt: new Date("2026-09-29T09:00:00.000Z") }, now), null);
+assert.equal(reminderStageForProfile({ trialEndsAt: new Date("2026-09-29T11:00:00.000Z") }, now), null);
+assert.equal(reminderStageForProfile({ trialEndsAt: new Date("2026-09-29T08:00:00.000Z") }, now), "last-day");
+assert.equal(reminderStageForProfile({
+  trialEndsAt: new Date("2026-09-29T08:00:00.000Z"),
+  trialLastDayReminderSentAt: now,
+}, now), null);
 assert.equal(reminderStageForProfile({ trialEndsAt: endedToday }, now), "expired");
 assert.equal(reminderStageForProfile({ trialEndsAt: endedEightDaysAgo, trialExpiryReminderSentAt: now }, now), null);
 assert.equal(reminderStageForProfile({
@@ -29,13 +34,22 @@ const first = trialReminderMessage({
   name: "Asha <Investor>",
   trialEndsAt: endedToday,
 }, "expired");
+const lastDay = trialReminderMessage({
+  email: "reader@example.com",
+  name: "Asha <Investor>",
+  trialEndsAt: new Date("2026-09-29T08:00:00.000Z"),
+}, "last-day");
 const second = trialReminderMessage({
   email: "reader@example.com",
   name: "Asha <Investor>",
   trialEndsAt: endedToday,
 }, "followup");
 assert.notEqual(first.subject, second.subject);
+assert.notEqual(lastDay.subject, first.subject);
+assert.match(lastDay.subject, /ends tomorrow/);
+assert.match(lastDay.text, /final day/);
 assert.notEqual(first.idempotencyKey, second.idempotencyKey);
+assert.notEqual(lastDay.idempotencyKey, first.idempotencyKey);
 assert.equal(first.idempotencyKey, trialReminderMessage({
   email: "reader@example.com",
   trialEndsAt: endedToday,
@@ -52,6 +66,7 @@ const result = await processTrialReminders({
   now,
   services: {
     list: async () => [
+      { email: "last-day@example.com", trialEndsAt: new Date("2026-09-29T08:00:00.000Z") },
       { email: "newly-expired@example.com", trialEndsAt: endedToday },
       { email: "followup@example.com", trialEndsAt: endedEightDaysAgo, trialExpiryReminderSentAt: new Date("2026-09-20T10:00:00.000Z") },
       { email: "customer@example.com", trialEndsAt: endedToday, latestPaymentOrderId: "paid-order" },
@@ -68,11 +83,11 @@ const result = await processTrialReminders({
 
 assert.deepEqual(
   { checked: result.checked, due: result.due, sent: result.sent, skipped: result.skipped, failed: result.failed },
-  { checked: 3, due: 2, sent: 2, skipped: 1, failed: 0 }
+  { checked: 4, due: 3, sent: 3, skipped: 1, failed: 0 }
 );
-assert.deepEqual(result.stages, { expired: 1, followup: 1 });
-assert.equal(sent.length, 2);
-assert.equal(completed.length, 2);
+assert.deepEqual(result.stages, { "last-day": 1, expired: 1, followup: 1 });
+assert.equal(sent.length, 3);
+assert.equal(completed.length, 3);
 assert.equal(released.length, 0);
 
 const dryRun = await processTrialReminders({

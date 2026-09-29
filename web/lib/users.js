@@ -280,13 +280,21 @@ function noPaidHistoryQuery() {
 export async function listTrialReminderCandidates(now = new Date(), limit = 100) {
   const users = await collection();
   const followupCutoff = new Date(now.getTime() - TRIAL_FOLLOWUP_DELAY_MS);
+  const lastDayCutoff = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   return users.find(
     {
       email: { $type: "string", $ne: "" },
-      trialEndsAt: { $lte: now },
+      trialEndsAt: { $lte: lastDayCutoff },
       ...noPaidHistoryQuery(),
       $or: [
-        { trialExpiryReminderSentAt: { $exists: false } },
+        {
+          trialEndsAt: { $gt: now, $lte: lastDayCutoff },
+          trialLastDayReminderSentAt: { $exists: false },
+        },
+        {
+          trialEndsAt: { $lte: now },
+          trialExpiryReminderSentAt: { $exists: false },
+        },
         {
           trialExpiryReminderSentAt: { $type: "date", $lte: followupCutoff },
           trialFollowupReminderSentAt: { $exists: false },
@@ -307,12 +315,22 @@ export async function listTrialReminderCandidates(now = new Date(), limit = 100)
         subscriptionPlan: 1,
         subscriptionStatus: 1,
         subscriptionEndsAt: 1,
+        trialLastDayReminderSentAt: 1,
       },
     }
   ).sort({ trialEndsAt: 1 }).limit(Math.max(1, Math.min(Number(limit) || 100, 250))).toArray();
 }
 
 function reminderFields(stage) {
+  if (stage === "last-day") {
+    return {
+      sentAt: "trialLastDayReminderSentAt",
+      providerId: "trialLastDayReminderProviderId",
+      claimedAt: "trialLastDayReminderClaimedAt",
+      attemptedAt: "trialLastDayReminderAttemptedAt",
+      error: "trialLastDayReminderError",
+    };
+  }
   if (stage === "expired") {
     return {
       sentAt: "trialExpiryReminderSentAt",

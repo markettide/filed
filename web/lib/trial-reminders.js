@@ -30,8 +30,14 @@ function hasPaidHistory(profile) {
 /** The next due message, or null when the reader should receive nothing. */
 export function reminderStageForProfile(profile, now = new Date()) {
   const trialEndsAt = validDate(profile?.trialEndsAt);
-  if (!trialEndsAt || trialEndsAt > now || hasPaidHistory(profile)) return null;
+  if (!trialEndsAt || hasPaidHistory(profile)) return null;
   if (accessForProfile(profile, now).paidActive) return null;
+  if (trialEndsAt > now) {
+    const lastDayStartsAt = new Date(trialEndsAt.getTime() - DAY_MS);
+    return lastDayStartsAt <= now && !profile?.trialLastDayReminderSentAt
+      ? "last-day"
+      : null;
+  }
   if (!profile?.trialExpiryReminderSentAt) return "expired";
 
   const firstSentAt = validDate(profile.trialExpiryReminderSentAt);
@@ -81,6 +87,35 @@ export function trialReminderMessage(profile, stage) {
   const greetingText = `Hi ${name},`;
   const greetingHtml = `Hi ${escapeHtml(name)},`;
   const commonFooter = "Regards,\nMarket Tide Team\nmarket.tide27@gmail.com\n+91 82004 40146\nhttps://markettide.in\n\nReply with Unsubscribe if you do not want to receive these emails.\n";
+
+  if (stage === "last-day") {
+    const bullets = [
+      "The complete NSE and BSE announcement dashboard",
+      "A Watchlist of up to 50 companies",
+      "Instant Telegram filing alerts",
+      "Insider trading information",
+      "Bulk and block deal tracking",
+      "Advanced filters, Excel exports, filing summaries and original PDFs",
+    ];
+    return {
+      subject: "Your Market Tide Premium trial ends tomorrow",
+      idempotencyKey: messageKey(profile.email, profile.trialEndsAt, stage),
+      text:
+        `${greetingText}\n\nThis is a quick reminder that today is the final day of your 7-day Market Tide Premium trial.\n\nStarting tomorrow, you will no longer have access to:\n\n`
+        + bullets.map((item) => `• ${item}`).join("\n")
+        + "\n\nYour free Market Tide account will remain active. You can continue receiving the morning newsletter and keep up to five companies in your Watchlist.\n\n"
+        + "To continue using every Premium feature without interruption, upgrade for ₹299 for three months. It is a one-time payment with no automatic renewal.\n\n"
+        + `Keep your Premium access: ${PRICING_URL}\n\nContinue following the companies that matter to you without spending hours reading exchange filings.\n\n${commonFooter}`,
+      html: emailShell({
+        greeting: greetingHtml,
+        lead: "Today is the final day of your 7-day Market Tide Premium trial.",
+        body: "<p>Starting tomorrow, you will no longer have access to:</p>",
+        bullets,
+        cta: "Keep your Premium access",
+        closing: "Your free morning newsletter and first five Watchlist companies will remain active.<br><br>Continue every Premium feature without interruption for <strong>₹299 for three months</strong>, with no automatic renewal.",
+      }),
+    };
+  }
 
   if (stage === "expired") {
     const bullets = [
@@ -160,7 +195,7 @@ export async function processTrialReminders({
     sent: 0,
     skipped: 0,
     failed: 0,
-    stages: { expired: 0, followup: 0 },
+    stages: { "last-day": 0, expired: 0, followup: 0 },
   };
 
   for (const profile of candidates) {
