@@ -130,6 +130,7 @@ class Phase2Test(unittest.TestCase):
             def __init__(self):
                 self.collections = {
                     "users": Collection([
+                        {"portfolio": [{"name": "Reliance Industries Ltd", "ticker": "RELIANCE"}]},
                         {"watchlist": [{"name": "Fortis Healthcare Ltd", "ticker": "FORTIS"}]},
                         {"watchlistCompanies": [{"company": "Infosys Limited", "symbol": "INFY"}]},
                     ]),
@@ -144,7 +145,10 @@ class Phase2Test(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("WATCHLIST_NEWS_COMPANIES_JSON", None)
             companies = load_companies(Database())
-        self.assertEqual([row["ticker"] for row in companies], ["FORTIS", "INFY"])
+        self.assertEqual(
+            [row["ticker"] for row in companies],
+            ["FORTIS", "INFY", "RELIANCE"],
+        )
 
     def test_disabled_job_never_reaches_ingestion(self):
         output = io.StringIO()

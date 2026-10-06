@@ -72,9 +72,12 @@ def load_companies(database=None):
             database = _db()
         candidates = []
         for row in database["users"].find(
-            {}, {"watchlist": 1, "watchlistCompanies": 1, "companies": 1}
+            {}, {"portfolio": 1, "watchlist": 1, "watchlistCompanies": 1, "companies": 1}
         ):
-            for field in ("watchlist", "watchlistCompanies", "companies"):
+            # The live website stores watchlist rows under `portfolio`.
+            # Retain the older aliases so this collector can also read data
+            # created by earlier deployments without a destructive migration.
+            for field in ("portfolio", "watchlist", "watchlistCompanies", "companies"):
                 candidates.extend(row.get(field) or [])
         for row in database["watchlists"].find({}, {"companies": 1, "items": 1}):
             candidates.extend(row.get("companies") or row.get("items") or [])
