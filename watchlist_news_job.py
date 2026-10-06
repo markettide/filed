@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 
 from watchlist_news import company_key
@@ -95,13 +96,50 @@ def main():
         return 0
     sources = load_sources()
     companies = load_companies()
-    summary = run_ingestion(
-        sources,
-        companies,
-        reviewer=OpenAICompatibleEventReviewer(),
-    )
-    print(json.dumps({"enabled": True, **summary}, default=str))
-    return 0 if not summary.get("sourceErrors") else 2
+    accelerated = os.environ.get("WATCHLIST_NEWS_ACCELERATED") == "1"
+    run_count = len(companies) if accelerated else 1
+    try:
+        delay_seconds = float(os.environ.get(
+            "WATCHLIST_NEWS_ACCELERATED_DELAY_SECONDS", "60"
+        ))
+    except ValueError:
+        delay_seconds = 60.0
+    delay_seconds = max(1.0, min(delay_seconds, 300.0))
+    reviewer = OpenAICompatibleEventReviewer()
+    totals = {
+        "companyCount": len(companies),
+        "sourceCount": len(sources),
+        "articleCount": 0,
+        "storyCount": 0,
+        "pendingReviewCount": 0,
+        "sourceErrors": [],
+        "llm": {"processed": 0, "merged": 0, "failed": 0, "skipped": True},
+    }
+    for index in range(run_count):
+        summary = run_ingestion(sources, companies, reviewer=reviewer)
+        for field in ("articleCount", "storyCount", "pendingReviewCount"):
+            totals[field] += int(summary.get(field) or 0)
+        totals["sourceErrors"].extend(summary.get("sourceErrors") or [])
+        llm = summary.get("llm") or {}
+        for field in ("processed", "merged", "failed"):
+            totals["llm"][field] += int(llm.get(field) or 0)
+        totals["llm"]["skipped"] = totals["llm"]["skipped"] and bool(llm.get("skipped"))
+        print(json.dumps({
+            "enabled": True,
+            "accelerated": accelerated,
+            "run": index + 1,
+            "runCount": run_count,
+            **summary,
+        }, default=str), flush=True)
+        if accelerated and index + 1 < run_count:
+            time.sleep(delay_seconds)
+    print(json.dumps({
+        "enabled": True,
+        "accelerated": accelerated,
+        "completedRuns": run_count,
+        **totals,
+    }, default=str), flush=True)
+    return 0 if not totals["sourceErrors"] else 2
 
 
 if __name__ == "__main__":

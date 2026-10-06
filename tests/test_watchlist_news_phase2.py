@@ -159,6 +159,33 @@ class Phase2Test(unittest.TestCase):
             self.assertEqual(main(), 0)
         self.assertIn('"enabled": false', output.getvalue().lower())
 
+    def test_accelerated_job_runs_once_per_company_with_a_delay(self):
+        output = io.StringIO()
+        summary = {
+            "companyCount": 2,
+            "sourceCount": 1,
+            "articleCount": 1,
+            "storyCount": 1,
+            "pendingReviewCount": 0,
+            "sourceErrors": [],
+            "llm": {"processed": 0, "merged": 0, "failed": 0, "skipped": True},
+        }
+        with patch.dict(os.environ, {
+            "WATCHLIST_NEWS_ENABLED": "1",
+            "WATCHLIST_NEWS_ACCELERATED": "1",
+            "WATCHLIST_NEWS_ACCELERATED_DELAY_SECONDS": "1",
+        }, clear=False), patch("watchlist_news_job.load_sources", return_value=[object()]), \
+                patch("watchlist_news_job.load_companies", return_value=[
+                    {"name": "Fortis Healthcare Ltd", "ticker": "FORTIS"},
+                    {"name": "Infosys Limited", "ticker": "INFY"},
+                ]), patch("watchlist_news_job.run_ingestion", return_value=summary) as ingest, \
+                patch("watchlist_news_job.time.sleep") as sleep, redirect_stdout(output):
+            code = main()
+        self.assertEqual(code, 0)
+        self.assertEqual(ingest.call_count, 2)
+        sleep.assert_called_once_with(1.0)
+        self.assertIn('"completedRuns": 2', output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
