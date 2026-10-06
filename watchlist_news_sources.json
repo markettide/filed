@@ -1,0 +1,15 @@
+{
+  "providers": {
+    "gdelt": {
+      "enabled": true,
+      "commercialUseAllowed": true,
+      "termsUrl": "https://www.gdeltproject.org/about.html",
+      "attribution": "News discovery data provided by The GDELT Project",
+      "maximumPerCompany": 25,
+      "sourceCountry": "IN",
+      "requestIntervalSeconds": 6.0,
+      "maxBatches": 1
+    }
+  },
+  "sources": []
+}

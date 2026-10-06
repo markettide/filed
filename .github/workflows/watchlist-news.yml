@@ -1,0 +1,37 @@
+name: Collect permitted watchlist news
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+
+concurrency:
+  group: watchlist-news
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    if: ${{ vars.WATCHLIST_NEWS_ENABLED == '1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install runtime dependencies
+        run: pip install -r requirements.txt
+      - name: Collect and review watchlist news
+        env:
+          WATCHLIST_NEWS_ENABLED: "1"
+          # Private trial starts deterministic-only so an unset variable cannot spend LLM quota.
+          WATCHLIST_NEWS_MAX_LLM_REVIEWS: ${{ vars.WATCHLIST_NEWS_MAX_LLM_REVIEWS || '0' }}
+          WATCHLIST_NEWS_LLM_ENDPOINT: ${{ secrets.WATCHLIST_NEWS_LLM_ENDPOINT }}
+          WATCHLIST_NEWS_LLM_API_KEY: ${{ secrets.WATCHLIST_NEWS_LLM_API_KEY }}
+          WATCHLIST_NEWS_LLM_MODEL: ${{ vars.WATCHLIST_NEWS_LLM_MODEL }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_DB: ${{ vars.MONGODB_DB || 'market_tide' }}
+        run: python watchlist_news_job.py
